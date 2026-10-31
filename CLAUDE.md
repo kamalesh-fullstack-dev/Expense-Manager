@@ -20,8 +20,8 @@ This project is now in a working MVP stage with the core financial flows impleme
 
 ### Current tech stack (what the code runs on today)
 - Next.js 16, React 19, TypeScript, Tailwind CSS, App Router
-- Prisma 7 with SQLite (`@prisma/adapter-better-sqlite3`), local development only
-- NextAuth v4 with credentials and JWT sessions
+- Prisma 7 with Neon Postgres (`@prisma/adapter-neon`)
+- Auth.js v5 (`next-auth@5` beta) with credentials and JWT sessions
 - Hand-built charts, and a hand-written service worker in `public/sw.js`
 - Node's test runner for unit tests, Playwright script for browser tests (`tests/e2e.mjs`)
 
@@ -229,73 +229,50 @@ The MVP is successful when:
 ## Known remaining work
 - password reset (needs an email provider)
 - real push notifications for reminders (reminders are in-app only)
-- move to Neon Postgres and deploy on Vercel (see "Production stack")
+- deploy on Vercel (see "Production stack")
 - test installing on real Android and iPhone devices
 - split expenses, motion polish
 - postpone SMS import to a future phase
 
 ## Production stack (same as the Workout Tracker)
-Money Manager should deploy the same way as `~/Desktop/Workout Tracker` (GitHub: `kamalesh-fullstack-dev/Workout-Tracker`). Read that project for working examples. None of the changes below are made yet.
+Money Manager should deploy the same way as `~/Desktop/Workout Tracker` (GitHub: `kamalesh-fullstack-dev/Workout-Tracker`). Read that project for working examples. The database, Prisma, migrations, auth and code changes below are done. The Vercel deploy is what remains.
 
 ### Target
 | Area | Workout Tracker setup | Money Manager today |
 | --- | --- | --- |
 | Hosting | Vercel, deployed from GitHub | Not deployed |
-| Database | Neon Postgres | SQLite |
-| Prisma driver | `@prisma/adapter-neon` with `@neondatabase/serverless` and `ws` | `@prisma/adapter-better-sqlite3` |
-| Prisma config | `prisma.config.ts`, migrations use `DIRECT_URL` | `prisma7.config.ts`, uses `DATABASE_URL` |
-| Migrations | Run during the build | Run by hand with `npm run db:migrate` |
-| Auth | Auth.js v5 (`next-auth@5` beta), `trustHost: true` | NextAuth v4 |
+| Database | Neon Postgres | Neon Postgres |
+| Prisma driver | `@prisma/adapter-neon` with `@neondatabase/serverless` and `ws` | Same |
+| Prisma config | `prisma.config.ts`, migrations use `DIRECT_URL` | Same |
+| Migrations | Run during the build | Same |
+| Auth | Auth.js v5 (`next-auth@5` beta), `trustHost: true` | Same, in one `src/lib/auth.ts` because there is no proxy |
 | PWA | Serwist (`@serwist/turbopack`, `src/app/sw.ts`) | Hand-written `public/sw.js` |
 | Validation | Zod | Hand-written `src/lib/validation.ts` |
 | Forms | React Hook Form | Plain React state |
 | UI | shadcn, lucide-react, sonner | Custom Tailwind |
 | Charts | Recharts | Hand-built |
 | Unit tests | Vitest (`tests/unit`) | Node test runner (`src/lib/*.test.ts`) |
-| Browser tests | `@playwright/test` (`tests/e2e`) | `tests/e2e.mjs` |
+| Browser tests | `@playwright/test` (`tests/e2e`) | `tests/e2e.mjs` on a Neon `e2e` branch |
 
-Only hosting, database, Prisma, migrations and auth are needed to go live. Move the rest over only when there is a reason to.
+Only hosting is left to go live. Move the rest over only when there is a reason to.
 
 ### Environment variables
-Never commit real values. Add a `.env.example` with these names, and set them in Vercel too:
+Never commit real values. `.env.example` lists these names. Set them in Vercel too:
 - `DATABASE_URL`: Neon pooled connection, used at runtime.
 - `DIRECT_URL`: Neon direct connection, used only for Prisma migrations.
-- `AUTH_SECRET`: generate with `openssl rand -base64 33`. This replaces `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. Never deploy the `development-secret-change-me` value from local `.env`.
+- `AUTH_SECRET`: generate with `openssl rand -base64 33`. Use a different value in Vercel from local `.env`. There is no fallback, so login fails without it.
 
-### Migration steps
-1. Create a separate Neon project for Money Manager. Do not share the Workout Tracker database.
-2. Set `provider = "postgresql"` in `prisma/schema.prisma`.
-3. Delete `prisma/migrations` and generate a new baseline for Postgres. The existing migrations are SQLite-specific. Local data does not need moving, because it holds no financial records yet.
-4. Replace the Prisma adapter in `src/lib/prisma.ts` using the pattern in the Workout Tracker's `src/lib/db.ts`:
-   ```ts
-   import { PrismaNeon } from "@prisma/adapter-neon";
-   import { neonConfig } from "@neondatabase/serverless";
-   import ws from "ws";
-
-   neonConfig.webSocketConstructor = ws;
-   const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
-   ```
-5. Rename `prisma7.config.ts` to `prisma.config.ts`, and point its datasource at `DIRECT_URL`. Remove `--config prisma7.config.ts` from scripts and docs.
-6. Update `package.json` scripts:
-   ```json
-   "build": "prisma migrate deploy && next build",
-   "postinstall": "prisma generate"
-   ```
-7. Upgrade to Auth.js v5, following the Workout Tracker's `src/lib/auth.ts` and `src/lib/auth.config.ts`, including `trustHost: true`.
-8. Import the GitHub repo into Vercel, add the environment variables, and deploy from `main`.
-
-### Code to change for Postgres and Vercel
-- Search: SQLite `contains` ignores case for ASCII, but Postgres does not. Add `mode: "insensitive"` in `src/lib/expense-filter.ts`.
-- Rate limiting: `src/lib/rate-limit.ts` keeps counts in memory, which does not carry across Vercel serverless instances. Move it to the database or a shared store.
-- Client IP: confirm `clientIp()` in `src/lib/api.ts` reads the right value behind Vercel.
-- Tests: `tests/e2e.mjs` creates a temporary SQLite file. Point it at a Neon test branch or a local Postgres instead. It must never run against the production database.
-- Metadata: `metadataBase` in `src/app/layout.tsx` reads `NEXTAUTH_URL`, so give it a replacement when that variable goes away.
+### Deploy steps
+1. Import the GitHub repo into Vercel, and pick the function region closest to the Neon database (`us-east-2`).
+2. Add the environment variables.
+3. Deploy from `main`. The build applies migrations to the production database.
+4. Confirm `clientIp()` in `src/lib/api.ts` reads the right value behind Vercel.
 
 ## Working in this repo
 - Run `npm test`, `npx eslint .` and `npm run test:e2e` before finishing a change.
 - Money is stored as paise in BigInt `*Paise` columns. The API speaks rupees; convert with `src/lib/money.ts`.
 - Recurring items never post by themselves. The user logs or skips each occurrence.
-- Prisma commands need `--config prisma7.config.ts`. Apply migrations with `npm run db:migrate`.
+- Apply migrations with `npm run db:migrate`. They use `DIRECT_URL`; the app uses `DATABASE_URL`.
 - Expense dates are stored as UTC midnight of the chosen calendar day. Use `src/lib/dates.ts`, never `toISOString()`, for "today".
 - `public/sw.js` must never cache pages or `/api/*`, because they hold private financial data. Bump `CACHE_NAME` when changing it.
 

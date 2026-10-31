@@ -1,6 +1,5 @@
-import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { getServerSession } from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
@@ -9,17 +8,22 @@ import { clearRateLimit, isRateLimited } from "@/lib/rate-limit";
 const LOGIN_ATTEMPTS = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
-export const authOptions: NextAuthOptions = {
+// Auth.js hides ordinary errors from the client, so the lockout needs its own code.
+class TooManyAttempts extends CredentialsSignin {
+  code = "too_many_attempts";
+}
+
+export const { handlers, auth } = NextAuth({
+  // Vercel sets the host, so there is no AUTH_URL to compare it against.
+  trustHost: true,
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === "production" ? undefined : "development-secret-change-me"),
   pages: {
     signIn: "/login",
   },
   providers: [
-    CredentialsProvider({
-      name: "Credentials",
+    Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
@@ -33,8 +37,8 @@ export const authOptions: NextAuthOptions = {
         const password = String(credentials.password);
         const limitKey = `login:${email}`;
 
-        if (isRateLimited(limitKey, LOGIN_ATTEMPTS, LOGIN_WINDOW_MS)) {
-          throw new Error("Too many attempts. Please wait 15 minutes and try again.");
+        if (await isRateLimited(limitKey, LOGIN_ATTEMPTS, LOGIN_WINDOW_MS)) {
+          throw new TooManyAttempts();
         }
 
         const user = await prisma.user.findUnique({
@@ -50,7 +54,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        clearRateLimit(limitKey);
+        await clearRateLimit(limitKey);
 
         return {
           id: user.id,
@@ -74,6 +78,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-};
+});
 
-export const getAuthSession = () => getServerSession(authOptions);
+export const getAuthSession = () => auth();

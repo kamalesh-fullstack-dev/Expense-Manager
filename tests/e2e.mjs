@@ -1,19 +1,31 @@
-// End-to-end checks against a production build and a throwaway database.
-// Run with `npm run test:e2e`. Nothing touches dev.db.
+// End-to-end checks against a production build and a dedicated test database.
+// Run with `npm run test:e2e`. E2E_DATABASE_URL and E2E_DIRECT_URL must point at a
+// Neon test branch, never the production database.
+import "dotenv/config";
 import { execFileSync, spawn } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { chromium } from "playwright";
 
+const { E2E_DATABASE_URL, E2E_DIRECT_URL } = process.env;
+
+if (!E2E_DATABASE_URL || !E2E_DIRECT_URL) {
+  console.error("Set E2E_DATABASE_URL and E2E_DIRECT_URL to a Neon test branch.");
+  process.exit(1);
+}
+
+if (E2E_DATABASE_URL === process.env.DATABASE_URL || E2E_DIRECT_URL === process.env.DIRECT_URL) {
+  console.error("The E2E URLs match the production database. Point them at a Neon test branch.");
+  process.exit(1);
+}
+
+const PRISMA = "node_modules/prisma/build/index.js";
+const NEXT = "node_modules/next/dist/bin/next";
 const PORT = 3102;
 const base = `http://localhost:${PORT}`;
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "money-manager-e2e-"));
 const env = {
   ...process.env,
-  DATABASE_URL: `file:${path.join(tempDir, "e2e.db")}`,
-  NEXTAUTH_URL: base,
-  NEXTAUTH_SECRET: "e2e-only-secret",
+  DATABASE_URL: E2E_DATABASE_URL,
+  DIRECT_URL: E2E_DIRECT_URL,
+  AUTH_SECRET: "e2e-only-secret",
 };
 
 let failures = 0;
@@ -100,6 +112,20 @@ async function run(browser) {
   check((await debtById(loan.id)).status === "Closed", "the final payment closes the loan");
   await call("DELETE", `/api/expenses?id=${final.data.id}`);
   check((await debtById(loan.id)).status === "Active", "undoing the final payment reopens the loan");
+  const rush = (await call("POST", "/api/debts", { name: "Rush", principal: 1000, outstanding: 1000, monthlyPayment: 100 })).data;
+  const payments = await Promise.all(Array.from({ length: 5 }, () => call("POST", "/api/debts/pay", { debtId: rush.id, amount: 300, date: today })));
+  const accepted = payments.filter((item) => item.status === 201).length;
+  check(accepted === 3 && (await debtById(rush.id)).outstanding === 100, "parallel payments can't overpay or get lost", payments.map((item) => item.status));
+
+  // Double-tapped saves
+  const twice = (await add(100, { title: "Twice" })).data;
+  const beforeEdits = await balanceOf("Bank");
+  await Promise.all([call("PUT", "/api/expenses", { ...twice, amount: 200 }), call("PUT", "/api/expenses", { ...twice, amount: 200 })]);
+  check((await balanceOf("Bank")) === beforeEdits - 100, "a double-tapped edit changes the balance once", await balanceOf("Bank"));
+  await call("DELETE", `/api/expenses?id=${twice.id}`);
+  check((await call("GET", "/api/expenses?search=twi")).data.length === 0, "the edited expense is gone");
+  await add(1, { title: "Latte Stand" });
+  check((await call("GET", "/api/expenses?search=LATTE")).data.length === 1, "search ignores case");
 
   // Recurring
   const rent = (await call("POST", "/api/recurring", { title: "Rent", amount: 12000, category: "Bills", frequency: "Monthly", nextDate: today, accountId: bank.id })).data;
@@ -178,7 +204,9 @@ async function run(browser) {
   // Reports and screens
   await page.goto(`${base}/`);
   await page.waitForSelector("text=Overview");
-  await page.screenshot({ path: path.join(process.env.E2E_SCREENSHOTS ?? tempDir, "dashboard.png"), fullPage: true });
+  if (process.env.E2E_SCREENSHOTS) {
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/dashboard.png`, fullPage: true });
+  }
   await page.goto(`${base}/reports`);
   await page.waitForSelector("text=of income");
   await page.waitForSelector("text=Bulk Mart");
@@ -222,8 +250,14 @@ async function run(browser) {
 }
 
 (async () => {
-  execFileSync("npx", ["prisma", "migrate", "deploy", "--config", "prisma7.config.ts"], { env, stdio: "ignore" });
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], { env, stdio: "ignore", detached: true });
+  execFileSync(process.execPath, [PRISMA, "migrate", "deploy"], { env, stdio: ["ignore", "ignore", "inherit"] });
+  // Rate limits live in the database now, so clear what the last run left behind.
+  execFileSync(process.execPath, [PRISMA, "db", "execute", "--stdin"], {
+    env,
+    input: 'DELETE FROM "RateLimit";',
+    stdio: ["pipe", "ignore", "ignore"],
+  });
+  const server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT)], { env, stdio: "ignore" });
 
   try {
     for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -234,8 +268,7 @@ async function run(browser) {
     const browser = await chromium.launch();
     await run(browser).finally(() => browser.close());
   } finally {
-    process.kill(-server.pid);
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    server.kill();
   }
 
   console.log(failures ? `${failures} FAILED` : "ALL PASSED");

@@ -68,11 +68,15 @@ export async function adjustDebtOutstanding(
   debtId: string,
   delta: bigint,
 ) {
-  const debt = await tx.debt.findFirst({ where: { id: debtId, userId } });
+  // This update locks the row, so parallel changes apply one after the other.
+  const { count } = await tx.debt.updateMany({
+    where: { id: debtId, userId },
+    data: { outstandingPaise: { increment: delta } },
+  });
 
-  if (!debt) return;
+  if (count === 0) return;
 
-  const next = debt.outstandingPaise + delta;
+  const { outstandingPaise: next } = await tx.debt.findUniqueOrThrow({ where: { id: debtId } });
   const outstandingPaise = next > BigInt(0) ? next : BigInt(0);
 
   await tx.debt.update({

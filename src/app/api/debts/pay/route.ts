@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import {
-  adjustDebtOutstanding,
   createExpenseWithBalance,
   getCurrentUser,
   ownsAccount,
@@ -45,11 +44,15 @@ export async function POST(request: Request) {
 
   const amountPaise = toPaise(amount);
 
-  if (amountPaise > debt.outstandingPaise) {
-    return NextResponse.json({ error: "That is more than the outstanding amount" }, { status: 400 });
-  }
-
   const expense = await prisma.$transaction(async (tx) => {
+    // The check and the deduction are one statement, so parallel payments can't both pass it.
+    const { count } = await tx.debt.updateMany({
+      where: { id: debt.id, outstandingPaise: { gte: amountPaise } },
+      data: { outstandingPaise: { decrement: amountPaise } },
+    });
+
+    if (count === 0) return null;
+
     const created = await createExpenseWithBalance(tx, user.id, {
       title: `${debt.name} EMI`,
       amountPaise,
@@ -60,10 +63,14 @@ export async function POST(request: Request) {
       debtId: debt.id,
     });
 
-    await adjustDebtOutstanding(tx, user.id, debt.id, -amountPaise);
+    await tx.debt.updateMany({ where: { id: debt.id, outstandingPaise: BigInt(0) }, data: { status: "Closed" } });
 
     return created;
   });
+
+  if (!expense) {
+    return NextResponse.json({ error: "That is more than the outstanding amount" }, { status: 400 });
+  }
 
   return NextResponse.json(serializeExpense(expense), { status: 201 });
 }

@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
@@ -23,6 +23,14 @@ model User {
   transfers         AccountTransfer[]
   incomes           Income[]
   recurringExpenses RecurringExpense[]
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
 }
 
 model Account {

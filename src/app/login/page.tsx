@@ -27,7 +27,11 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError(result.error === "CredentialsSignin" ? "Invalid email or password." : result.error);
+      setError(
+        result.code === "too_many_attempts"
+          ? "Too many attempts. Please wait 15 minutes and try again."
+          : "Invalid email or password.",
+      );
       return;
     }
 

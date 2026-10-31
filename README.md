@@ -1,15 +1,17 @@
 # Money Manager
 
-A mobile-first personal finance PWA for logging expenses and income, tracking accounts, budgets, loans and recurring bills, and reviewing monthly reports. Built with Next.js, React, Prisma, SQLite and NextAuth.
+A mobile-first personal finance PWA for logging expenses and income, tracking accounts, budgets, loans and recurring bills, and reviewing monthly reports. Built with Next.js, React, Prisma, Neon Postgres and Auth.js.
 
 ## Setup
 
 Create `.env`:
 
 ```
-DATABASE_URL="file:./dev.db"
-NEXTAUTH_URL="http://localhost:3001"
-NEXTAUTH_SECRET="any-long-random-string"
+DATABASE_URL="neon-pooled-connection"
+DIRECT_URL="neon-direct-connection"
+E2E_DATABASE_URL="neon-test-branch-pooled-connection"
+E2E_DIRECT_URL="neon-test-branch-direct-connection"
+AUTH_SECRET="generate with: openssl rand -base64 33"
 ```
 
 Then:
@@ -17,7 +19,6 @@ Then:
 ```
 npm install
 npm run db:migrate
-npx prisma generate --config prisma7.config.ts
 npm run dev -- -p 3001
 ```
 
@@ -27,7 +28,7 @@ npm run dev -- -p 3001
 | --- | --- |
 | `npm run dev` | Start the development server |
 | `npm test` | Run unit tests |
-| `npm run test:e2e` | Build, then run browser tests on a temporary database |
+| `npm run test:e2e` | Build, then run browser tests on the Neon test branch |
 | `npx eslint .` | Lint |
 | `npm run db:migrate` | Apply database migrations |
 

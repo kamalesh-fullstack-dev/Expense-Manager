@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import { toCsv } from "./csv";
 import { toPaise, toRupees } from "./money";
-import { isRateLimited } from "./rate-limit";
 
 test("rupees convert to exact paise and back", () => {
   assert.equal(toPaise(0.07), BigInt(7));
@@ -22,9 +21,3 @@ test("csv quotes separators and defuses spreadsheet formulas", () => {
   assert.equal(toCsv(["A"], [[-5]]), "A\r\n-5");
 });
 
-test("rate limiter blocks past the limit until the window ends", () => {
-  assert.equal(isRateLimited("k", 2, 1000, 0), false);
-  assert.equal(isRateLimited("k", 2, 1000, 1), false);
-  assert.equal(isRateLimited("k", 2, 1000, 2), true);
-  assert.equal(isRateLimited("k", 2, 1000, 1001), false);
-});

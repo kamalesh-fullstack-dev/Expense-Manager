@@ -29,7 +29,8 @@ export function DebtsPage() {
   const [error, setError] = useState("");
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState("");
-  const [payAccountId, setPayAccountId] = useState("");
+  const [payAccountChoice, setPayAccountChoice] = useState<string | undefined>();
+  const payAccountId = payAccountChoice ?? accounts.items[0]?.id ?? "";
   const [payDate, setPayDate] = useState(() => localDateString());
   const [payError, setPayError] = useState("");
   const [name, setName] = useState("");
@@ -118,7 +119,7 @@ export function DebtsPage() {
   const openPayment = (debt: Debt) => {
     setPayingId(debt.id);
     setPayAmount(String(Math.min(debt.monthlyPayment, debt.outstanding)));
-    setPayAccountId(accounts.items[0]?.id ?? "");
+    setPayAccountChoice(undefined);
     setPayDate(localDateString());
     setPayError("");
   };
@@ -375,7 +376,7 @@ export function DebtsPage() {
                         <input aria-label="Payment amount" type="number" inputMode="decimal" min="0" step="0.01" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0d1820] px-2 py-2 text-white outline-none" />
                         <input aria-label="Payment date" type="date" value={payDate} onChange={(event) => setPayDate(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0d1820] px-2 py-2 text-white outline-none" />
                       </div>
-                      <select aria-label="Paid from" value={payAccountId} onChange={(event) => setPayAccountId(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0d1820] px-2 py-2 text-white outline-none">
+                      <select aria-label="Paid from" value={payAccountId} onChange={(event) => setPayAccountChoice(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0d1820] px-2 py-2 text-white outline-none">
                         <option value="">No account</option>
                         {accounts.items.map((account) => (
                           <option key={account.id} value={account.id}>{account.name}</option>
@@ -384,7 +385,7 @@ export function DebtsPage() {
                       {payError ? <p className="text-sm text-rose-300">{payError}</p> : null}
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => setPayingId(null)} className="rounded-xl border border-white/10 py-2 text-sm text-slate-200">Cancel</button>
-                        <button type="button" onClick={handlePayment} className="rounded-xl bg-cyan-400 py-2 text-sm font-semibold text-slate-950">Confirm</button>
+                        <button type="button" onClick={handlePayment} disabled={accounts.loading} className="rounded-xl bg-cyan-400 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60">Confirm</button>
                       </div>
                     </div>
                   )}

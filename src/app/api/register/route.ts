@@ -8,7 +8,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
-  if (isRateLimited(`register:${clientIp(request)}`, 20, 60 * 60 * 1000)) {
+  if (await isRateLimited(`register:${clientIp(request)}`, 20, 60 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many sign-ups. Please try again later." }, { status: 429 });
   }
 

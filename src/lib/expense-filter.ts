@@ -31,16 +31,17 @@ export function buildExpenseWhereInput({
   const first = isMonthKey(month) ? month : isMonthKey(fromMonth) ? fromMonth : null;
   const last = isMonthKey(month) ? month : isMonthKey(toMonth) ? toMonth : null;
   const term = search?.trim();
+  const matches = { contains: term, mode: "insensitive" as const };
 
   return {
     userId,
     ...(term
       ? {
           OR: [
-            { title: { contains: term } },
-            { category: { contains: term } },
-            { merchant: { contains: term } },
-            { notes: { contains: term } },
+            { title: matches },
+            { category: matches },
+            { merchant: matches },
+            { notes: matches },
           ],
         }
       : {}),

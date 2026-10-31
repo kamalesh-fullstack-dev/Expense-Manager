@@ -115,6 +115,9 @@ export async function PUT(request: Request) {
   const { data } = parsed;
 
   const income = await prisma.$transaction(async (tx) => {
+    // Lock the row first, so a double-tapped save can't apply the same change twice.
+    await tx.income.updateMany({ where: { id, userId: user.id }, data: { updatedAt: new Date() } });
+
     const existing = await tx.income.findFirst({ where: { id, userId: user.id } });
 
     if (!existing) return null;
