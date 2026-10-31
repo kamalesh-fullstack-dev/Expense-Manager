@@ -21,14 +21,14 @@ export const metadata: Metadata = {
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "http://localhost:3000",
   ),
-  applicationName: "Aarav Ledger",
-  title: "Aarav Ledger",
+  applicationName: "Expense Manager",
+  title: "Expense Manager",
   description: "A modern expense tracker dashboard designed for daily budgeting and spending insights.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Aarav Ledger",
+    title: "Expense Manager",
   },
   icons: {
     icon: "/icon.svg",

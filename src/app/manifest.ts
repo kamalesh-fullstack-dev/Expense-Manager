@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Aarav Ledger",
-    short_name: "Ledger",
+    name: "Expense Manager",
+    short_name: "Expenses",
     description: "Premium mobile-first expense tracker for daily spending and budgeting.",
     start_url: "/",
     display: "standalone",

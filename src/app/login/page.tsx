@@ -42,7 +42,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#0a1016] px-4">
       <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#121d27] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Money Manager</p>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Expense Manager</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Welcome back</h1>
         <p className="mt-2 text-sm text-slate-400">Sign in to continue your monthly budget.</p>
 
