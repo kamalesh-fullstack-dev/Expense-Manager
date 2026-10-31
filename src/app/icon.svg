@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Aarav Ledger app icon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020d14"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="50%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="158" fill="rgba(148,163,184,0.12)"/>
+  <path d="M190 154h132c20 0 36 16 36 36v132c0 20-16 36-36 36H190c-20 0-36-16-36-36V190c0-20 16-36 36-36Z" fill="url(#glow)" opacity="0.18"/>
+  <path d="M164 242c0-39 31-70 70-70h71c21 0 38 17 38 38v14h-64v-14c0-7-6-13-13-13h-39c-17 0-31 14-31 31v128c0 17 14 31 31 31h39c7 0 13-6 13-13v-16h64v14c0 21-17 38-38 38h-71c-39 0-70-31-70-70v-63Z" fill="url(#glow)"/>
+  <path d="M275 150v182h-38V150h38Zm-6 239h-26v-31h26v31Z" fill="#f8fafc" opacity="0.96"/>
+  <path d="M242 197h49c11 0 20 9 20 20v8h-35v-8h-34v131h34v-29h35v29c0 11-9 20-20 20h-49c-11 0-20-9-20-20V217c0-11 9-20 20-20Z" fill="#0f172a" opacity="0.82"/>
+</svg>

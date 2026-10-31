@@ -1,0 +1,165 @@
+// Money is stored as whole paise in BigInt columns, so it never picks up rounding
+// errors. The API still sends rupees; convert with src/lib/money.ts.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String?
+  password          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  expenses          Expense[]
+  budgets           Budget[]
+  categories        Category[]
+  accounts          Account[]
+  debts             Debt[]
+  transfers         AccountTransfer[]
+  incomes           Income[]
+  recurringExpenses RecurringExpense[]
+}
+
+model Account {
+  id                String             @id @default(cuid())
+  name              String
+  type              String             @default("Bank")
+  balancePaise      BigInt             @default(0) @map("balance")
+  color             String             @default("#67e8f9")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  incomes           Income[]
+  recurringExpenses RecurringExpense[]
+  transferOuts      AccountTransfer[]  @relation("TransferFrom")
+  transferIns       AccountTransfer[]  @relation("TransferTo")
+
+  @@unique([userId, name])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#67e8f9")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  title         String
+  amountPaise   BigInt   @map("amount")
+  category      String
+  merchant      String?
+  notes         String?
+  paymentMethod String?
+  date          DateTime
+  accountId     String?
+  debtId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  debt          Debt?    @relation(fields: [debtId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  title       String
+  amountPaise BigInt   @map("amount")
+  source      String   @default("Salary")
+  notes       String?
+  date        DateTime
+  accountId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+}
+
+model RecurringExpense {
+  id            String   @id @default(cuid())
+  title         String
+  amountPaise   BigInt   @map("amount")
+  category      String
+  merchant      String?
+  paymentMethod String?
+  frequency     String   @default("Monthly")
+  anchorDay     Int
+  nextDate      DateTime
+  active        Boolean  @default(true)
+  accountId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, nextDate])
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  category    String
+  amountPaise BigInt   @map("amount")
+  month       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, month])
+}
+
+model Debt {
+  id                  String    @id @default(cuid())
+  name                String
+  lender              String?
+  principalPaise      BigInt    @map("principal")
+  outstandingPaise    BigInt    @map("outstanding")
+  monthlyPaymentPaise BigInt    @map("monthlyPayment")
+  dueDate             Int?
+  interestRate        Float?
+  startDate           DateTime?
+  endDate             DateTime?
+  status              String    @default("Active")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments            Expense[]
+}
+
+model AccountTransfer {
+  id            String   @id @default(cuid())
+  amountPaise   BigInt   @map("amount")
+  note          String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  fromAccountId String
+  toAccountId   String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount   Account  @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount     Account  @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}

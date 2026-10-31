@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Money Manager
 
-## Getting Started
+A mobile-first personal finance PWA for logging expenses and income, tracking accounts, budgets, loans and recurring bills, and reviewing monthly reports. Built with Next.js, React, Prisma, SQLite and NextAuth.
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Create `.env`:
+
+```
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_URL="http://localhost:3001"
+NEXTAUTH_SECRET="any-long-random-string"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+npm install
+npm run db:migrate
+npx prisma generate --config prisma7.config.ts
+npm run dev -- -p 3001
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm test` | Run unit tests |
+| `npm run test:e2e` | Build, then run browser tests on a temporary database |
+| `npx eslint .` | Lint |
+| `npm run db:migrate` | Apply database migrations |
 
-To learn more about Next.js, take a look at the following resources:
+The service worker only runs in production builds, so test offline behaviour with `npm run build && npm start`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How money works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Amounts are stored as whole paise in BigInt columns. The API and UI use rupees, and `src/lib/money.ts` converts between them.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Account balances are stored totals. Every change that affects one updates the balance in the same database transaction as the record itself.
