@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { daysUntilStoredDate, formatStoredDate, localDateString, RECURRING_FREQUENCIES } from "@/lib/dates";
 import { defaultCategories, formatCurrency } from "@/lib/format";
@@ -222,8 +223,8 @@ export function RecurringPage() {
                     >
                       {item.active ? "Pause" : "Resume"}
                     </button>
-                    <button type="button" onClick={() => fillForm(item)} className="rounded-lg border border-white/10 bg-[#0d1820] px-2 py-1 text-cyan-300">Edit</button>
-                    <button type="button" onClick={() => handleDelete(item.id)} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-rose-300">Delete</button>
+                    <EditButton onClick={() => fillForm(item)} />
+                    <DeleteButton onClick={() => handleDelete(item.id)} />
                   </div>
                 </div>
               );

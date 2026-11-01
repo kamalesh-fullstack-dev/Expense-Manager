@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { formatStoredDate, localDateString } from "@/lib/dates";
 import { currencies, DEFAULT_CURRENCY, formatCurrency } from "@/lib/format";
@@ -390,20 +391,8 @@ export function AccountsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-cyan-300">{formatCurrency(account.balance)}</span>
-                    <button
-                      type="button"
-                      onClick={() => fillForm(account)}
-                      className="rounded-lg border border-white/10 bg-[#121d27] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(account.id)}
-                      className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300"
-                    >
-                      Delete
-                    </button>
+                    <EditButton onClick={() => fillForm(account)} />
+                    <DeleteButton onClick={() => handleDelete(account.id)} />
                   </div>
                 </div>
               ))
@@ -438,13 +427,7 @@ export function AccountsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-cyan-300">{formatCurrency(transfer.amount)}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTransfer(transfer.id)}
-                        className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300"
-                      >
-                        Delete
-                      </button>
+                      <DeleteButton onClick={() => handleDeleteTransfer(transfer.id)} />
                     </div>
                   </div>
                   {transfer.note ? <p className="mt-2 text-xs text-slate-400">{transfer.note}</p> : null}

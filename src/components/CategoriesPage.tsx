@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { sendJson, useApiList } from "@/lib/api-client";
 
 type Category = {
@@ -160,20 +161,8 @@ export function CategoriesPage() {
                     <span className="text-sm font-medium text-white">{category.name}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fillForm(category)}
-                      className="rounded-lg border border-white/10 bg-[#121d27] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(category.id)}
-                      className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300"
-                    >
-                      Delete
-                    </button>
+                    <EditButton onClick={() => fillForm(category)} />
+                    <DeleteButton onClick={() => handleDelete(category.id)} />
                   </div>
                 </div>
               ))

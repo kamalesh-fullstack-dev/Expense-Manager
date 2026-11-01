@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { ExpenseFormModal, type Expense } from "@/components/ExpenseFormModal";
 import { sendJson, useApiData, useApiList } from "@/lib/api-client";
 import { formatStoredDate } from "@/lib/dates";
@@ -143,12 +144,8 @@ export function TransactionsPage() {
                   <span className="shrink-0 text-sm font-semibold text-rose-300">-{formatCurrency(expense.amount)}</span>
                 </div>
                 <div className="mt-2 flex justify-end gap-2">
-                  <button type="button" onClick={() => setEditing(expense)} className="rounded-lg border border-white/10 bg-[#0d1820] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleDelete(expense.id)} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300">
-                    Delete
-                  </button>
+                  <EditButton onClick={() => setEditing(expense)} />
+                  <DeleteButton onClick={() => handleDelete(expense.id)} />
                 </div>
               </div>
             ))

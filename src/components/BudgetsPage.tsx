@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton } from "@/components/IconButtons";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { localMonthString, shiftMonth } from "@/lib/dates";
 import { categoryMeta, defaultCategories, formatCurrency } from "@/lib/format";
@@ -266,13 +267,7 @@ export function BudgetsPage() {
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#121d27]">{categoryMeta[card.category]?.icon ?? "💸"}</span>
                       {card.category}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteBudget(card.id)}
-                      className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300"
-                    >
-                      Delete
-                    </button>
+                    <DeleteButton onClick={() => handleDeleteBudget(card.id)} />
                   </div>
                   <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
                     <span>{formatCurrency(card.spent)} spent</span>

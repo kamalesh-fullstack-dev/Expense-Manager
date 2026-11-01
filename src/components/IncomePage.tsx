@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { formatStoredDate, localDateString, localMonthString } from "@/lib/dates";
 import { formatCurrency } from "@/lib/format";
@@ -201,8 +202,8 @@ export function IncomePage() {
                   <span className="shrink-0 text-sm font-semibold text-emerald-300">+{formatCurrency(income.amount)}</span>
                 </div>
                 <div className="mt-2 flex justify-end gap-2">
-                  <button type="button" onClick={() => fillForm(income)} className="rounded-lg border border-white/10 bg-[#0d1820] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Edit</button>
-                  <button type="button" onClick={() => handleDelete(income.id)} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-300">Delete</button>
+                  <EditButton onClick={() => fillForm(income)} />
+                  <DeleteButton onClick={() => handleDelete(income.id)} />
                 </div>
               </div>
             ))
