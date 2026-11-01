@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
+import { PageLoader } from "@/components/Loader";
 import { sendJson, useApiList } from "@/lib/api-client";
 
 type Category = {
@@ -68,7 +69,7 @@ export function CategoriesPage() {
   };
 
   if (status === "loading") {
-    return <main className="flex min-h-screen items-center justify-center bg-[#0a1016] text-slate-200">Loading...</main>;
+    return <PageLoader />;
   }
 
   return (

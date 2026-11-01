@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
+import { ListSkeleton, PageLoader, Skeleton } from "@/components/Loader";
 import { ExpenseFormModal, type Expense } from "@/components/ExpenseFormModal";
 import type { Recurring } from "@/components/RecurringPage";
 import { sendJson, useApiData, useApiList } from "@/lib/api-client";
@@ -128,6 +129,11 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
     return totalSpent >= monthCap * 0.85 ? "Near limit" : "On track";
   }, [monthCap, totalSpent]);
 
+  const summaryLoading =
+    (expenseList.loading && monthExpenses.length === 0) ||
+    (monthBudgets.loading && monthBudgets.items.length === 0) ||
+    (accountList.loading && accounts.length === 0) ||
+    (debtList.loading && debtList.items.length === 0);
   const hasAnyData = recentExpenses.length > 0 || monthBudgets.items.length > 0 || debts.length > 0;
 
   const closeForm = () => {
@@ -173,7 +179,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "User";
 
   if (status === "loading") {
-    return <main className="flex min-h-screen items-center justify-center bg-[#0a1016] text-slate-200">Loading...</main>;
+    return <PageLoader />;
   }
 
   return (
@@ -204,10 +210,10 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
           <div className="mb-4 flex items-center justify-between">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.28em] text-slate-400">This month</p>
-              <h2 className="mt-2 break-all text-[2.2rem] font-semibold leading-tight tracking-[-0.06em] text-white">{formatCurrency(totalSpent)}</h2>
+              {summaryLoading ? <Skeleton className="mt-2 h-11 w-40" /> : <h2 className="mt-2 break-all text-[2.2rem] font-semibold leading-tight tracking-[-0.06em] text-white">{formatCurrency(totalSpent)}</h2>}
             </div>
             <div className="shrink-0 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-medium text-cyan-300">
-              {budgetStatus}
+              {summaryLoading ? "Loading" : budgetStatus}
             </div>
           </div>
 
@@ -220,7 +226,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
             ].map((item) => (
               <div key={item.label} className="min-w-0 rounded-2xl border border-white/5 bg-[#0d1820]/70 p-3">
                 <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
-                <p className={`mt-2 break-all text-base font-semibold ${item.tone}`}>{item.value}</p>
+                {summaryLoading ? <Skeleton className="mt-2 h-6 w-20" /> : <p className={`mt-2 break-all text-base font-semibold ${item.tone}`}>{item.value}</p>}
               </div>
             ))}
           </div>
@@ -299,7 +305,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
           ))}
         </section>
 
-        {!hasAnyData && (
+        {!hasAnyData && !summaryLoading && !recent.loading && (
           <section className="mt-6 rounded-[28px] border border-cyan-500/20 bg-[#101c27] p-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-[0.25em] text-cyan-300">Welcome</p>
@@ -335,7 +341,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
 
           <div className="space-y-3">
             {recent.loading && recentExpenses.length === 0 ? (
-              <p className="text-sm text-slate-400">Loading expenses...</p>
+              <ListSkeleton />
             ) : recentExpenses.length === 0 ? (
               <div className="rounded-[22px] border border-dashed border-white/10 bg-[#0d1820] p-4 text-sm text-slate-400">
                 No expenses yet. Tap <span className="text-cyan-300">+</span> to log your first purchase.

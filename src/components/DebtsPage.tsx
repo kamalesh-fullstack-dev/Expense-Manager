@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
+import { ListSkeleton, PageLoader } from "@/components/Loader";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { daysUntilDueDay, localDateString } from "@/lib/dates";
 import { formatCurrency } from "@/lib/format";
@@ -182,7 +183,7 @@ export function DebtsPage() {
   };
 
   if (status === "loading") {
-    return <main className="flex min-h-screen items-center justify-center bg-[#0a1016] text-slate-200">Loading...</main>;
+    return <PageLoader />;
   }
 
   return (
@@ -342,7 +343,7 @@ export function DebtsPage() {
 
           <div className="space-y-3">
             {loading && debts.length === 0 ? (
-              <p className="text-sm text-slate-400">Loading debts...</p>
+              <ListSkeleton />
             ) : debts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-[#0d1820] p-3 text-sm text-slate-400">
                 No debts added yet. Add your first EMI or loan here.

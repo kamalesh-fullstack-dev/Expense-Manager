@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { ListSkeleton, PageLoader } from "@/components/Loader";
 import { useApiList } from "@/lib/api-client";
 import { elapsedDaysInMonth, formatStoredDate, localMonthString, monthsEndingAt } from "@/lib/dates";
 import { categoryColor, categoryMeta, formatCurrency, formatSigned } from "@/lib/format";
@@ -127,7 +128,7 @@ export function ReportsPage() {
   const maxTrendValue = Math.max(...monthTrend.map((item) => item.total), 1);
 
   if (status === "loading") {
-    return <main className="flex min-h-screen items-center justify-center bg-[#0a1016] text-slate-200">Loading...</main>;
+    return <PageLoader />;
   }
 
   return (
@@ -353,7 +354,7 @@ export function ReportsPage() {
 
           <div className="space-y-3">
             {loading && expenses.length === 0 ? (
-              <p className="text-sm text-slate-400">Loading report data...</p>
+              <ListSkeleton />
             ) : (
               topMerchants.map((expense) => (
                 <div key={String(expense.id)} className="flex items-center justify-between rounded-2xl border border-white/5 bg-[#0d1820] px-3 py-2.5">

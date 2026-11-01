@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
+import { ListSkeleton, PageLoader, Skeleton } from "@/components/Loader";
 import { ExpenseFormModal, type Expense } from "@/components/ExpenseFormModal";
 import { sendJson, useApiData, useApiList } from "@/lib/api-client";
 import { formatStoredDate } from "@/lib/dates";
@@ -39,6 +40,7 @@ export function TransactionsPage() {
   }, [page, sort, search, category, accountId, fromDate, toDate]);
 
   const { data, loading, failed, reload } = useApiData<TransactionPage>(url, emptyPage);
+  const firstLoad = loading && data.items.length === 0;
   const accounts = useApiList<{ id: string; name: string }>("/api/accounts");
   const customCategories = useApiList<{ name: string }>("/api/categories");
 
@@ -67,7 +69,7 @@ export function TransactionsPage() {
   };
 
   if (status === "loading") {
-    return <main className="flex min-h-screen items-center justify-center bg-[#0a1016] text-slate-200">Loading...</main>;
+    return <PageLoader />;
   }
 
   return (
@@ -115,16 +117,18 @@ export function TransactionsPage() {
 
           <div className="mt-4 flex items-center justify-between text-sm">
             <span className="text-slate-400">
-              {loading && data.items.length === 0 ? "Loading..." : `${data.total} ${data.total === 1 ? "expense" : "expenses"}`}
+              {firstLoad ? <Skeleton className="h-4 w-24" /> : `${data.total} ${data.total === 1 ? "expense" : "expenses"}`}
             </span>
-            <span className="font-semibold text-rose-300">{formatCurrency(data.totalAmount)}</span>
+            {firstLoad ? <Skeleton className="h-4 w-16" /> : <span className="font-semibold text-rose-300">{formatCurrency(data.totalAmount)}</span>}
           </div>
         </section>
 
         {failed && <p role="alert" className="mt-4 text-sm text-rose-300">Couldn&apos;t load your transactions. Please try again.</p>}
 
         <section className="mt-5 space-y-3">
-          {!loading && data.items.length === 0 ? (
+          {firstLoad ? (
+            <ListSkeleton rows={5} />
+          ) : data.items.length === 0 ? (
             <div className="rounded-[22px] border border-dashed border-white/10 bg-[#0d1820] p-4 text-sm text-slate-400">
               No expenses match these filters.
             </div>
