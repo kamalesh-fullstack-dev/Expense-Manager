@@ -48,7 +48,7 @@ export const formatCurrency = (value: number) =>
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
   }).format(value);
 
-export const formatSigned = (value: number) => (value >= 0 ? formatCurrency(value) : `-${formatCurrency(Math.abs(value))}`);
+export const formatSigned = (value: number) => (value < 0 ? "-" : "") + formatCurrency(Math.abs(value));
 
 export const categoryColor = (name: string, custom: Array<{ name: string; color: string }>) =>
   custom.find((item) => item.name === name)?.color ?? categoryMeta[name]?.color ?? "#22d3ee";

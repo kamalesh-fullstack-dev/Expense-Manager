@@ -181,7 +181,7 @@ export function ReportsPage() {
             <div className="rounded-2xl border border-white/5 bg-[#0d1820] p-3">
               <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400">Largest spend</p>
               <p className="mt-2 text-sm font-semibold text-white">{topMerchants[0]?.title ?? "None"}</p>
-              <p className="text-xs text-rose-300">-{formatCurrency(topMerchants[0]?.amount ?? 0)}</p>
+              <p className="text-xs text-rose-300">{formatSigned(-(topMerchants[0]?.amount ?? 0))}</p>
             </div>
           </div>
         </section>

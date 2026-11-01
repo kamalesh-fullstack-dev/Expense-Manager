@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { toCsv } from "./csv";
-import { formatCurrency, setDisplayCurrency } from "./format";
+import { formatCurrency, formatSigned, setDisplayCurrency } from "./format";
 import { toPaise, toRupees } from "./money";
 
 test("amounts use the chosen currency without being converted", () => {
@@ -12,6 +12,13 @@ test("amounts use the chosen currency without being converted", () => {
   assert.equal(formatCurrency(1234.5), "$1,234.50");
   setDisplayCurrency("NOPE");
   assert.equal(formatCurrency(100000), "₹1,00,000");
+});
+
+test("signed amounts never show a minus sign on zero", () => {
+  assert.equal(formatSigned(-0), "₹0");
+  assert.equal(formatSigned(0), "₹0");
+  assert.equal(formatSigned(-250.5), "-₹250.50");
+  assert.equal(formatSigned(250), "₹250");
 });
 
 test("rupees convert to exact paise and back", () => {

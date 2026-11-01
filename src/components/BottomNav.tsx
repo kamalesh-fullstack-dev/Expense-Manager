@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home", icon: "M12 3.2 3 10.5V20h6v-6h6v6h6v-9.5L12 3.2Z" },
+  { href: "/transactions", label: "Expenses", icon: "M5.5 2.5h13v19l-3.25-2-3.25 2-3.25-2-3.25 2v-19Zm3 5v2h7v-2h-7Zm0 4.5v2h7v-2h-7Z" },
   { href: "/reports", label: "Reports", icon: "M4 18.5V7.5h3.5v11H4Zm6.5 0V4h3.5v14.5h-3.5Zm6.5 0v-8H20v8h-3Z" },
-  { href: "/debts", label: "Debt", icon: "M12 2.5a7.5 7.5 0 0 1 7.5 7.5v3.3c0 1.6-.6 3.2-1.8 4.3L15 20.5h-6l-3.7-2.9A6.4 6.4 0 0 1 4.5 13.3V10A7.5 7.5 0 0 1 12 2.5Zm0 4a1.5 1.5 0 0 0-1.5 1.5V11h-1.5a1.5 1.5 0 0 0 0 3h1.5v1.5a1.5 1.5 0 0 0 3 0V14h1.5a1.5 1.5 0 0 0 0-3H13.5V8A1.5 1.5 0 0 0 12 6.5Z" },
   { href: "/accounts", label: "Accounts", icon: "M4 7a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Zm0 5a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Zm0 5a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Z" },
 ];
 

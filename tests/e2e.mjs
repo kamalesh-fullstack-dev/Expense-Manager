@@ -214,8 +214,21 @@ async function run(browser) {
   await other.context.close();
 
   // Reports and screens
+  await add(123456789.5, { title: "A very long expense title that should never push the amount off the screen" });
   await page.goto(`${base}/`);
-  await page.waitForSelector("text=Overview");
+  await page.waitForSelector("text=This month");
+  await page.waitForSelector("text=12,34,56,789.50");
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "a very large amount fits a phone screen");
+  check((await page.getByRole("button", { name: "Edit" }).count()) === 5, "home shows only the latest expenses");
+  await page.getByRole("link", { name: "Expenses" }).click();
+  await page.waitForSelector("text=Expense log");
+  await page.waitForSelector("text=Bulk 34");
+  await page.getByRole("button", { name: "Add expense" }).click();
+  await page.getByRole("button", { name: /cancel|close/i }).first().click();
+  check(page.url() === `${base}/transactions`, "expenses can be added from the expense log");
+  await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS ?? "."}/expenses.png` }).catch(() => {});
+  await page.goto(`${base}/`);
+  await page.waitForSelector("text=This month");
   if (process.env.E2E_SCREENSHOTS) {
     await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/dashboard.png`, fullPage: true });
   }

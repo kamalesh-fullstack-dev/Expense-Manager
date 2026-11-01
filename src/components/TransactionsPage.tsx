@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
@@ -13,7 +12,7 @@ import { categoryMeta, defaultCategories, formatCurrency } from "@/lib/format";
 type TransactionPage = { items: Expense[]; total: number; totalAmount: number; hasMore: boolean };
 
 const emptyPage: TransactionPage = { items: [], total: 0, totalAmount: 0, hasMore: false };
-const fieldClass = "w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500";
+const fieldClass = "w-full min-w-0 rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none [color-scheme:dark] placeholder:text-slate-500";
 
 export function TransactionsPage() {
   const { status } = useSession();
@@ -25,6 +24,7 @@ export function TransactionsPage() {
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const url = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), sort });
@@ -74,7 +74,7 @@ export function TransactionsPage() {
       <div className="mx-auto max-w-md px-4 pb-[6.5rem] pt-6">
         <header className="mb-5">
           <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Expenses</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">All transactions</h1>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Expense log</h1>
         </header>
 
         <section className="rounded-[28px] border border-white/10 bg-[#121d27] p-4">
@@ -82,13 +82,13 @@ export function TransactionsPage() {
             <input value={search} onChange={(event) => filtered(setSearch)(event.target.value)} placeholder="Search title, merchant, notes" className={fieldClass} />
 
             <div className="grid grid-cols-2 gap-2">
-              <select aria-label="Category" value={category} onChange={(event) => filtered(setCategory)(event.target.value)} className={fieldClass}>
+              <select aria-label="Category" value={category} onChange={(event) => filtered(setCategory)(event.target.value)} className={`col-span-2 ${fieldClass}`}>
                 <option value="All">All categories</option>
                 {categories.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
-              <select aria-label="Account" value={accountId} onChange={(event) => filtered(setAccountId)(event.target.value)} className={fieldClass}>
+              <select aria-label="Account" value={accountId} onChange={(event) => filtered(setAccountId)(event.target.value)} className={`col-span-2 ${fieldClass}`}>
                 <option value="All">All accounts</option>
                 {accounts.items.map((account) => (
                   <option key={account.id} value={account.id}>{account.name}</option>
@@ -113,7 +113,9 @@ export function TransactionsPage() {
           </div>
 
           <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-slate-400">{data.total} {data.total === 1 ? "expense" : "expenses"}</span>
+            <span className="text-slate-400">
+              {loading && data.items.length === 0 ? "Loading..." : `${data.total} ${data.total === 1 ? "expense" : "expenses"}`}
+            </span>
             <span className="font-semibold text-rose-300">{formatCurrency(data.totalAmount)}</span>
           </div>
         </section>
@@ -164,18 +166,19 @@ export function TransactionsPage() {
           </div>
         )}
 
-        <Link href="/" className="mt-4 block text-center text-sm text-cyan-300">Back to dashboard</Link>
-
-        <BottomNav />
+        <BottomNav onAdd={() => setAdding(true)} />
       </div>
 
-      {editing && (
+      {(editing || adding) && (
         <ExpenseFormModal
-          key={editing.id}
+          key={editing?.id ?? "new"}
           expense={editing}
           accounts={accounts.items}
           categories={categories}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setAdding(false);
+          }}
           onSaved={reload}
         />
       )}
