@@ -199,6 +199,18 @@ async function run(browser) {
   check((await other.call("PUT", "/api/categories", { id: coffee.id, name: "Stolen" })).status === 404, "a second user cannot rename someone else's category");
   check((await other.call("POST", "/api/incomes", { title: "x", amount: 1, date: today, accountId: bank.id })).status === 400, "a second user cannot credit someone else's account");
   check((await other.call("DELETE", `/api/incomes?id=${income.data.id}`)).status === 404, "a second user cannot delete someone else's income");
+
+  // Currency
+  await other.page.goto(`${base}/accounts`);
+  await other.page.getByLabel("Currency").selectOption("USD");
+  await other.page.waitForFunction(() => document.body.innerText.includes("$0"));
+  await other.page.reload();
+  await other.page.waitForFunction(() => document.body.innerText.includes("$0"));
+  check(true, "a currency choice changes amounts and survives a reload");
+  check((await other.call("PUT", "/api/settings", { currency: "XYZ" })).status === 400, "unknown currencies are rejected");
+  await page.goto(`${base}/accounts`);
+  await page.waitForFunction(() => document.body.innerText.includes("₹"));
+  check(true, "one user's currency doesn't affect another user");
   await other.context.close();
 
   // Reports and screens

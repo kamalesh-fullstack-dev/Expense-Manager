@@ -2,7 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { toCsv } from "./csv";
+import { formatCurrency, setDisplayCurrency } from "./format";
 import { toPaise, toRupees } from "./money";
+
+test("amounts use the chosen currency without being converted", () => {
+  assert.equal(formatCurrency(100000), "₹1,00,000");
+  setDisplayCurrency("USD");
+  assert.equal(formatCurrency(100000), "$100,000");
+  assert.equal(formatCurrency(1234.5), "$1,234.50");
+  setDisplayCurrency("NOPE");
+  assert.equal(formatCurrency(100000), "₹1,00,000");
+});
 
 test("rupees convert to exact paise and back", () => {
   assert.equal(toPaise(0.07), BigInt(7));

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { sendJson, useApiList } from "@/lib/api-client";
 import { formatStoredDate, localDateString } from "@/lib/dates";
-import { formatCurrency } from "@/lib/format";
+import { currencies, DEFAULT_CURRENCY, formatCurrency } from "@/lib/format";
 
 type Account = {
   id: string;
@@ -31,7 +31,7 @@ const defaultColors = ["#67e8f9", "#a78bfa", "#22c55e", "#f59e0b", "#fb7185", "#
 const accountTypes = ["Bank", "Credit Card", "UPI", "Cash", "Wallet"];
 
 export function AccountsPage() {
-  const { status } = useSession();
+  const { data: session, status, update } = useSession();
   const accountList = useApiList<Account>("/api/accounts");
   const transferList = useApiList<Transfer>("/api/transfers");
   const accounts = accountList.items;
@@ -49,6 +49,16 @@ export function AccountsPage() {
   const [accountError, setAccountError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [transferError, setTransferError] = useState("");
+  const [currencyError, setCurrencyError] = useState("");
+
+  const handleCurrency = async (currency: string) => {
+    const error = await sendJson("/api/settings", "PUT", { currency });
+    setCurrencyError(error ?? "");
+
+    if (!error) {
+      await update();
+    }
+  };
 
   const reloadAll = () => {
     accountList.reload();
@@ -182,6 +192,20 @@ export function AccountsPage() {
               {accounts.length} accounts
             </div>
           </div>
+
+          <label htmlFor="currency" className="mb-1 block text-xs uppercase tracking-[0.2em] text-slate-400">Currency</label>
+          <select
+            id="currency"
+            value={session?.user?.currency ?? DEFAULT_CURRENCY}
+            onChange={(event) => handleCurrency(event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none"
+          >
+            {Object.entries(currencies).map(([code, { label }]) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-slate-400">This changes the symbol only. Amounts are not converted.</p>
+          {currencyError ? <p className="mt-2 text-sm text-rose-300">{currencyError}</p> : null}
         </section>
 
         <section className="mt-6 rounded-[28px] border border-white/10 bg-[#121d27] p-4">

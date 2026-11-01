@@ -2,6 +2,7 @@ import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
+import { DEFAULT_CURRENCY } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { clearRateLimit, isRateLimited } from "@/lib/rate-limit";
 
@@ -74,6 +75,10 @@ export const { handlers, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = typeof token.sub === "string" ? token.sub : "";
+
+        // Read fresh rather than from the token, so a change reaches the user's other devices.
+        const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { currency: true } });
+        session.user.currency = user?.currency ?? DEFAULT_CURRENCY;
       }
       return session;
     },
