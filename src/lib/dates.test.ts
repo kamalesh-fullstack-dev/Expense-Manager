@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { daysUntilDueDay, daysUntilStoredDate, elapsedDaysInMonth, localDateString, localMonthString, monthsEndingAt, nextOccurrence, shiftMonth } from "./dates";
+import { countDueDates, daysUntilDueDay, daysUntilStoredDate, elapsedDaysInMonth, localDateString, localMonthString, monthsEndingAt, nextOccurrence, shiftMonth } from "./dates";
 
 test("local dates use the device's calendar day, not UTC", () => {
   // 00:30 local time is still the previous UTC day in India, which toISOString would report.
@@ -9,6 +9,19 @@ test("local dates use the device's calendar day, not UTC", () => {
 
   assert.equal(localDateString(justAfterMidnight), "2026-11-01");
   assert.equal(localMonthString(justAfterMidnight), "2026-11");
+});
+
+test("loan payments count only the due dates between two days", () => {
+  assert.equal(countDueDates("2026-11-02", "2027-04-30", 5), 6);
+  assert.equal(countDueDates("2026-11-10", "2027-04-30", 5), 5);
+  assert.equal(countDueDates("2026-11-02", "2027-04-04", 5), 5);
+  assert.equal(countDueDates("2026-11-05", "2026-11-05", 5), 1);
+  assert.equal(countDueDates("2027-01-01", "2026-11-05", 5), 0);
+});
+
+test("loan due dates on the 31st fall on the last day of shorter months", () => {
+  assert.equal(countDueDates("2027-02-01", "2027-02-28", 31), 1);
+  assert.equal(countDueDates("2027-02-01", "2027-02-27", 31), 0);
 });
 
 test("shiftMonth crosses year boundaries", () => {

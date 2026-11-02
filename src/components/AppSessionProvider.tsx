@@ -3,11 +3,11 @@
 import { SessionProvider, useSession } from "next-auth/react";
 import { Fragment } from "react";
 
-import { DEFAULT_CURRENCY, setDisplayCurrency } from "@/lib/format";
+import { getDisplayCurrency, setDisplayCurrency } from "@/lib/format";
 
 function CurrencyScope({ children }: { children: React.ReactNode }) {
   const { data } = useSession();
-  const currency = data?.user?.currency ?? DEFAULT_CURRENCY;
+  const currency = data?.user?.currency ?? getDisplayCurrency();
 
   setDisplayCurrency(currency);
 

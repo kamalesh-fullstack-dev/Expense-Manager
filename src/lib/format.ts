@@ -34,6 +34,8 @@ export const isCurrency = (code: unknown): code is string =>
 
 let displayCurrency = DEFAULT_CURRENCY;
 
+export const getDisplayCurrency = () => displayCurrency;
+
 // Set from the session by AppSessionProvider. This only changes the symbol: amounts are never converted.
 export const setDisplayCurrency = (code: string) => {
   displayCurrency = isCurrency(code) ? code : DEFAULT_CURRENCY;

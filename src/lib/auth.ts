@@ -77,8 +77,13 @@ export const { handlers, auth } = NextAuth({
         session.user.id = typeof token.sub === "string" ? token.sub : "";
 
         // Read fresh rather than from the token, so a change reaches the user's other devices.
-        const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { currency: true } });
-        session.user.currency = user?.currency ?? DEFAULT_CURRENCY;
+        // A database blip must not end the session, so the client keeps its last currency instead.
+        try {
+          const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { currency: true } });
+          session.user.currency = user?.currency ?? DEFAULT_CURRENCY;
+        } catch (error) {
+          console.error("Could not read the user's currency", error);
+        }
       }
       return session;
     },

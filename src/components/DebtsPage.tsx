@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { ListSkeleton, PageLoader } from "@/components/Loader";
 import { sendJson, useApiList } from "@/lib/api-client";
-import { daysUntilDueDay, localDateString } from "@/lib/dates";
+import { countDueDates, daysUntilDueDay, localDateString } from "@/lib/dates";
 import { formatCurrency } from "@/lib/format";
 
 type Debt = {
@@ -24,6 +24,11 @@ type Debt = {
   status?: string | null;
 };
 
+const inputClass = "w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500";
+const dateClass = "mt-1 w-full min-w-0 rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-sm normal-case tracking-normal text-white outline-none [color-scheme:dark]";
+
+const timesPayments = (amount: number, payments: number) => Math.round(amount * payments * 100) / 100;
+
 export function DebtsPage() {
   const { status } = useSession();
   const { items: debts, loading, reload } = useApiList<Debt>("/api/debts");
@@ -37,8 +42,6 @@ export function DebtsPage() {
   const [payError, setPayError] = useState("");
   const [name, setName] = useState("");
   const [lender, setLender] = useState("");
-  const [principal, setPrincipal] = useState("");
-  const [outstanding, setOutstanding] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [dueDate, setDueDate] = useState("5");
   const [interestRate, setInterestRate] = useState("");
@@ -48,6 +51,15 @@ export function DebtsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const activeDebts = useMemo(() => debts.filter((debt) => debt.status !== "Closed"), [debts]);
+
+  // Payments before today count as already made, so only the ones still to come are owed.
+  const today = localDateString();
+  const dueDay = Number(dueDate);
+  const validDueDay = Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31;
+  const amountPerMonth = Number(monthlyPayment);
+  const firstPayment = startDate > today ? startDate : today;
+  const paymentsLeft = endDate && validDueDay ? countDueDates(firstPayment, endDate, dueDay) : null;
+  const toPay = paymentsLeft === null ? null : timesPayments(amountPerMonth, paymentsLeft);
 
   const totals = useMemo(() => {
     const totalOutstanding = activeDebts.reduce((sum, debt) => sum + Number(debt.outstanding), 0);
@@ -93,8 +105,6 @@ export function DebtsPage() {
     setEditingId(null);
     setName("");
     setLender("");
-    setPrincipal("");
-    setOutstanding("");
     setMonthlyPayment("");
     setDueDate("5");
     setInterestRate("");
@@ -108,8 +118,6 @@ export function DebtsPage() {
     setEditingId(debt.id);
     setName(debt.name);
     setLender(debt.lender ?? "");
-    setPrincipal(String(debt.principal));
-    setOutstanding(String(debt.outstanding));
     setMonthlyPayment(String(debt.monthlyPayment));
     setDueDate(String(debt.dueDate ?? 5));
     setInterestRate(debt.interestRate !== null && debt.interestRate !== undefined ? String(debt.interestRate) : "");
@@ -143,8 +151,33 @@ export function DebtsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !principal || outstanding === "" || monthlyPayment === "") {
-      setError("Enter a name, principal, outstanding and EMI.");
+    const editing = debts.find((debt) => debt.id === editingId);
+
+    if (!name.trim() || !(amountPerMonth > 0)) {
+      setError("Enter a name and the amount per month.");
+      return;
+    }
+
+    if (!validDueDay) {
+      setError("Enter a due day between 1 and 31.");
+      return;
+    }
+
+    if (!editing && !endDate) {
+      setError("Choose when the loan ends.");
+      return;
+    }
+
+    // An edit that leaves the schedule alone keeps the balance, so payments already made still count.
+    const scheduleChanged =
+      !editing ||
+      editing.monthlyPayment !== amountPerMonth ||
+      editing.dueDate !== dueDay ||
+      (editing.endDate?.slice(0, 10) ?? "") !== endDate;
+    const useSchedule = Boolean(endDate) && scheduleChanged;
+
+    if (useSchedule && !paymentsLeft) {
+      setError("That end date leaves no payments. Choose a later date.");
       return;
     }
 
@@ -152,10 +185,10 @@ export function DebtsPage() {
       id: editingId,
       name: name.trim(),
       lender: lender.trim(),
-      principal: Number(principal),
-      outstanding: Number(outstanding),
-      monthlyPayment: Number(monthlyPayment),
-      dueDate: dueDate === "" ? null : Number(dueDate),
+      principal: useSchedule ? timesPayments(amountPerMonth, countDueDates(startDate || firstPayment, endDate, dueDay)) : editing?.principal,
+      outstanding: useSchedule ? toPay : editing?.outstanding,
+      monthlyPayment: amountPerMonth,
+      dueDate: dueDay,
       interestRate: interestRate === "" ? null : Number(interestRate),
       startDate: startDate || null,
       endDate: endDate || null,
@@ -293,37 +326,45 @@ export function DebtsPage() {
           </div>
 
           <div className="space-y-3">
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Loan name" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
-            <input value={lender} onChange={(event) => setLender(event.target.value)} placeholder="Lender / bank" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Loan name" className={inputClass} />
 
             <div className="grid grid-cols-2 gap-3">
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={principal} onChange={(event) => setPrincipal(event.target.value)} placeholder="Principal" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={outstanding} onChange={(event) => setOutstanding(event.target.value)} placeholder="Outstanding" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={monthlyPayment} onChange={(event) => setMonthlyPayment(event.target.value)} placeholder="Amount per month" className={`min-w-0 ${inputClass}`} />
+              <input aria-label="Due day" type="number" inputMode="numeric" value={dueDate} onChange={(event) => setDueDate(event.target.value)} min="1" max="31" placeholder="Due day (1-31)" className={`min-w-0 ${inputClass}`} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={monthlyPayment} onChange={(event) => setMonthlyPayment(event.target.value)} placeholder="EMI / month" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
-              <input type="number" value={dueDate} onChange={(event) => setDueDate(event.target.value)} min="1" max="31" placeholder="Due day (1-31)" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <input type="number" inputMode="decimal" min="0" step="0.01" value={interestRate} onChange={(event) => setInterestRate(event.target.value)} placeholder="Rate %" className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500" />
-              <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none">
-                <option value="Active">Active</option>
-                <option value="Closed">Closed</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Start
-                <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none" />
+              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                Start date
+                <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={dateClass} />
               </label>
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                End
-                <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none" />
+              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                End date
+                <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className={dateClass} />
               </label>
             </div>
+
+            {paymentsLeft !== null && amountPerMonth > 0 && (
+              <p className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2.5 text-sm text-cyan-100">
+                {paymentsLeft === 0
+                  ? "No payments left before this end date."
+                  : `${paymentsLeft} ${paymentsLeft === 1 ? "payment" : "payments"} left · ${formatCurrency(toPay ?? 0)} to pay`}
+              </p>
+            )}
+
+            <details className="rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-2.5">
+              <summary className="cursor-pointer text-sm text-slate-300">More details</summary>
+              <div className="mt-3 space-y-3">
+                <input value={lender} onChange={(event) => setLender(event.target.value)} placeholder="Lender / bank" className={inputClass} />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="number" inputMode="decimal" min="0" step="0.01" value={interestRate} onChange={(event) => setInterestRate(event.target.value)} placeholder="Rate %" className={`min-w-0 ${inputClass}`} />
+                  <select aria-label="Status" value={statusValue} onChange={(event) => setStatusValue(event.target.value)} className={`min-w-0 ${inputClass}`}>
+                    <option value="Active">Active</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+            </details>
 
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
@@ -369,6 +410,9 @@ export function DebtsPage() {
                     <div>
                       <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400">EMI</p>
                       <p className="mt-1 text-cyan-300">{formatCurrency(debt.monthlyPayment)}</p>
+                      {debt.status !== "Closed" && debt.monthlyPayment > 0 && (
+                        <p className="text-[11px] text-slate-400">{Math.ceil(debt.outstanding / debt.monthlyPayment)} left</p>
+                      )}
                     </div>
                   </div>
 

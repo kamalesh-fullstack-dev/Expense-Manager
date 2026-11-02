@@ -53,7 +53,22 @@ export function daysUntilDueDay(dueDay: number, today = new Date()) {
   return Math.round((next.getTime() - start.getTime()) / 86_400_000);
 }
 
-export const RECURRING_FREQUENCIES = ["Weekly", "Monthly", "Yearly"] as const;
+// Monthly due dates from one day to another, both included, with day 31 meaning the last day of shorter months.
+export function countDueDates(from: string, to: string, dueDay: number) {
+  let count = 0;
+
+  for (let month = from.slice(0, 7); month <= to.slice(0, 7); month = shiftMonth(month, 1)) {
+    const [year, monthNumber] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const due = `${month}-${String(Math.min(dueDay, lastDay)).padStart(2, "0")}`;
+
+    if (due >= from && due <= to) count += 1;
+  }
+
+  return count;
+}
+
+export const RECURRING_FREQUENCIES =["Weekly", "Monthly", "Yearly"] as const;
 
 // The date after a stored occurrence. anchorDay keeps a bill on the 31st from
 // drifting to the 28th for good after passing through February.

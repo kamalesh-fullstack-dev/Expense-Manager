@@ -117,6 +117,19 @@ async function run(browser) {
   const accepted = payments.filter((item) => item.status === 201).length;
   check(accepted === 3 && (await debtById(rush.id)).outstanding === 100, "parallel payments can't overpay or get lost", payments.map((item) => item.status));
 
+  // Loan schedule
+  const inSixMonths = localDay(new Date(new Date().getFullYear(), new Date().getMonth() + 6, 15));
+  await page.goto(`${base}/debts`);
+  await page.getByPlaceholder("Loan name").fill("Scheduled");
+  await page.getByPlaceholder("Amount per month").fill("2000");
+  await page.getByLabel("End date").fill(inSixMonths);
+  await page.waitForSelector("text=to pay");
+  await page.getByRole("button", { name: "Save debt" }).click();
+  await page.waitForSelector("text=Scheduled");
+  const scheduled = (await call("GET", "/api/debts")).data.find((d) => d.name === "Scheduled");
+  check(scheduled?.outstanding % 2000 === 0 && scheduled.outstanding >= 10000 && scheduled.outstanding <= 14000, "a loan's balance comes from its dates", scheduled);
+  await call("DELETE", `/api/debts?id=${scheduled.id}`);
+
   // Double-tapped saves
   const twice = (await add(100, { title: "Twice" })).data;
   const beforeEdits = await balanceOf("Bank");
@@ -275,7 +288,17 @@ async function run(browser) {
 }
 
 (async () => {
-  execFileSync(process.execPath, [PRISMA, "migrate", "deploy"], { env, stdio: ["ignore", "ignore", "inherit"] });
+  // A sleeping Neon branch can refuse the first connections while it wakes up.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      execFileSync(process.execPath, [PRISMA, "migrate", "deploy"], { env, stdio: "ignore" });
+      break;
+    } catch (error) {
+      if (attempt === 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+
   // Rate limits live in the database now, so clear what the last run left behind.
   execFileSync(process.execPath, [PRISMA, "db", "execute", "--stdin"], {
     env,
