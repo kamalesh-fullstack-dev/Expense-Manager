@@ -15,6 +15,7 @@ type Account = {
   name: string;
   type: string;
   balance: number;
+  setAside?: number;
   color: string;
 };
 
@@ -388,6 +389,11 @@ export function AccountsPage() {
                     <div>
                       <p className="text-sm font-medium text-white">{account.name}</p>
                       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{account.type}</p>
+                      {account.setAside ? (
+                        <p className="text-[11px] text-slate-400">
+                          {formatCurrency(account.setAside)} set aside · {formatCurrency(Math.max(account.balance - account.setAside, 0))} free
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

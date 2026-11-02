@@ -24,6 +24,7 @@ model User {
   transfers         AccountTransfer[]
   incomes           Income[]
   recurringExpenses RecurringExpense[]
+  savingsGoals      SavingsGoal[]
 }
 
 model RateLimit {
@@ -49,8 +50,39 @@ model Account {
   recurringExpenses RecurringExpense[]
   transferOuts      AccountTransfer[]  @relation("TransferFrom")
   transferIns       AccountTransfer[]  @relation("TransferTo")
+  goalEntries       GoalEntry[]
 
   @@unique([userId, name])
+}
+
+// Money set aside for a goal stays in its account: entries only earmark it, and never change a balance.
+model SavingsGoal {
+  id          String      @id @default(cuid())
+  name        String
+  targetPaise BigInt      @map("target")
+  targetDate  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries     GoalEntry[]
+
+  @@index([userId])
+}
+
+// Positive amounts set money aside; negative ones release it ("Withdrawn") or record spending that ate into it ("Used").
+model GoalEntry {
+  id          String      @id @default(cuid())
+  amountPaise BigInt      @map("amount")
+  kind        String
+  createdAt   DateTime    @default(now())
+  goalId      String
+  goal        SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@index([accountId])
 }
 
 model Category {

@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { getAccountBalanceAdjustments, type AccountBalanceAdjustment } from "@/lib/account-balance";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { settleSavings } from "@/lib/savings";
 
 export async function getCurrentUser() {
   const session = await getAuthSession();
@@ -39,6 +40,12 @@ export async function applyAccountAdjustments(
       data: { balancePaise: { increment: BigInt(delta) } },
     });
   }
+
+  await settleSavings(
+    tx,
+    userId,
+    adjustments.filter(({ delta }) => delta < 0).map(({ accountId }) => accountId),
+  );
 }
 
 export async function ownsAccount(userId: string, accountId: string) {

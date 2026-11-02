@@ -186,6 +186,27 @@ async function run(browser) {
   await page.waitForFunction(() => document.body.innerText.includes("HDFC") && document.body.innerText.includes("12,345.67"));
   check((await balanceOf("HDFC")) === 12345.67, "accounts can be renamed and corrected");
 
+  // Savings goals
+  const close = (a, b) => Math.abs(a - b) < 0.001;
+  const icici = (await call("POST", "/api/accounts", { name: "ICICI", type: "Bank", balance: 5000 })).data;
+  const bike = (await call("POST", "/api/goals", { name: "Bike", target: 10000 })).data;
+  const setAside = (accountId, amount, action = "add") => call("POST", "/api/goals/entries", { goalId: bike.id, accountId, amount, action });
+  const goalSaved = async () => (await call("GET", "/api/goals")).data.find((g) => g.id === bike.id).saved;
+  const heldIn = async (name) => (await call("GET", "/api/accounts")).data.find((a) => a.name === name).setAside;
+  check((await setAside(bank.id, 2000)).status === 201 && (await setAside(icici.id, 3000)).status === 201, "money can be set aside from two accounts");
+  check(close(await goalSaved(), 5000) && close(await balanceOf("HDFC"), 12345.67), "setting money aside leaves balances alone");
+  check((await setAside(icici.id, 2500)).status === 400, "only free money can be set aside");
+  await add(11000, { title: "Laptop" });
+  check(close(await heldIn("HDFC"), 1345.67) && close(await goalSaved(), 4345.67), "spending into savings lowers the goal", await goalSaved());
+  await call("PUT", "/api/expenses", { ...(await add(1, { title: "Gum" })).data, amount: 1 });
+  check(close(await goalSaved(), 4344.67), "every expense that dips into savings is taken from the goal");
+  check((await setAside(icici.id, 1000, "withdraw")).status === 201 && close(await goalSaved(), 3344.67), "goal money can be withdrawn");
+  await page.goto(`${base}/goals`);
+  await page.waitForSelector("text=Bike");
+  check((await page.getByText("Spent from HDFC").count()) >= 1, "the goal shows where savings were spent");
+  await call("DELETE", `/api/goals?id=${bike.id}`);
+  check((await heldIn("HDFC")) === 0, "deleting a goal frees its money");
+
   // Transactions
   for (let index = 0; index < 35; index += 1) await add(1, { title: `Bulk ${index}`, merchant: "Bulk Mart" });
   const firstPage = (await call("GET", "/api/transactions?search=Bulk&page=0")).data;

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, isUniqueConstraintError, readJsonBody } from "@/lib/api";
 import { toPaise, toRupees } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { setAsideByAccount, settleSavings } from "@/lib/savings";
 import { cleanText, parseAmount } from "@/lib/validation";
 
 const duplicateNameResponse = () =>
@@ -27,12 +28,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const accounts = await prisma.account.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [accounts, setAside] = await Promise.all([
+    prisma.account.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    setAsideByAccount(prisma, { account: { userId: user.id } }),
+  ]);
 
-  return NextResponse.json(accounts.map(serializeAccount));
+  return NextResponse.json(
+    accounts.map((account) => ({ ...serializeAccount(account), setAside: toRupees(setAside.get(account.id) ?? BigInt(0)) })),
+  );
 }
 
 export async function POST(request: Request) {
@@ -82,9 +88,14 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const account = await prisma.account.update({
-      where: { id: String(id) },
-      data: { name, type, balancePaise: toPaise(balance), color },
+    const account = await prisma.$transaction(async (tx) => {
+      const updated = await tx.account.update({
+        where: { id: String(id) },
+        data: { name, type, balancePaise: toPaise(balance), color },
+      });
+
+      await settleSavings(tx, user.id, [updated.id]);
+      return updated;
     });
 
     return NextResponse.json(serializeAccount(account));

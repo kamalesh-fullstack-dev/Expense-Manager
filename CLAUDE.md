@@ -273,6 +273,7 @@ Never commit real values. `.env.example` lists these names. Set them in Vercel t
 - Money is stored as paise in BigInt `*Paise` columns. The API speaks rupees; convert with `src/lib/money.ts`.
 - Each user has one display currency (`User.currency`). It changes the symbol only and never converts amounts. Show money with `formatCurrency`, and only add currencies with two decimals.
 - Recurring items never post by themselves. The user logs or skips each occurrence.
+- Savings goals earmark money that stays in its account (`GoalEntry` rows); they never change a balance. When a balance falls below what is set aside in it, `settleSavings` in `src/lib/savings.ts` takes the difference from the newest goals first. Goals are only topped up by hand.
 - Loans are entered as an amount per month and dates. The form works out the balance from the due dates still to come; loan payments are still made by hand with Pay EMI.
 - Apply migrations with `npm run db:migrate`. They use `DIRECT_URL`; the app uses `DATABASE_URL`.
 - Expense dates are stored as UTC midnight of the chosen calendar day. Use `src/lib/dates.ts`, never `toISOString()`, for "today".

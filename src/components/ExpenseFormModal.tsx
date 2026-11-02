@@ -54,7 +54,7 @@ export function ExpenseFormModal({
   onSaved,
 }: {
   expense: Expense | null;
-  accounts: Array<{ id: string; name: string }>;
+  accounts: Array<{ id: string; name: string; balance?: number; setAside?: number }>;
   categories: string[];
   onClose: () => void;
   onSaved: () => void;
@@ -81,6 +81,12 @@ export function ExpenseFormModal({
   const paymentMethod = paymentChoice ?? last?.paymentMethod ?? "Card";
   const knownAccount = (id?: string | null) => (id && accounts.some((account) => account.id === id) ? id : null);
   const accountId = accountChoice === undefined ? knownAccount(last?.accountId) ?? accounts[0]?.id ?? null : accountChoice;
+
+  // How much of the money set aside for goals this expense would spend. Editing only counts the extra.
+  const chosenAccount = accounts.find((account) => account.id === accountId);
+  const alreadyCounted = expense && expense.accountId === accountId ? expense.amount : 0;
+  const free = (chosenAccount?.balance ?? 0) + alreadyCounted - (chosenAccount?.setAside ?? 0);
+  const savingsUsed = chosenAccount?.setAside ? Math.min(Math.max(Number(amount) - Math.max(free, 0), 0), chosenAccount.setAside) : 0;
 
   const fillFrom = (item: Expense) => {
     setTitle(item.title);
@@ -245,6 +251,12 @@ export function ExpenseFormModal({
             <label className={labelClass}>Notes</label>
             <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} placeholder="Optional note about this expense" className={fieldClass} />
           </div>
+
+          {savingsUsed > 0 && chosenAccount ? (
+            <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              This uses {formatCurrency(savingsUsed)} of the money set aside in {chosenAccount.name}. Your newest goal goes down by that much.
+            </p>
+          ) : null}
 
           {error ? (
             <p role="alert" className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">

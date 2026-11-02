@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { DeleteButton, EditButton } from "@/components/IconButtons";
 import { ListSkeleton, PageLoader, Skeleton } from "@/components/Loader";
 import { ExpenseFormModal, type Expense } from "@/components/ExpenseFormModal";
+import type { Goal } from "@/components/GoalsPage";
 import type { Recurring } from "@/components/RecurringPage";
 import { sendJson, useApiData, useApiList } from "@/lib/api-client";
 import { daysUntilDueDay, daysUntilStoredDate, formatStoredDate, localMonthString, shiftMonth } from "@/lib/dates";
@@ -64,6 +65,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
   const debtList = useApiList<Debt>("/api/debts");
   const customCategories = useApiList<{ name: string; color: string }>("/api/categories");
   const recurring = useApiList<Recurring>("/api/recurring");
+  const goals = useApiList<Goal>("/api/goals");
 
   const accounts = accountList.items;
   const monthExpenses = expenseList.items;
@@ -83,7 +85,14 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
     accountList.reload();
     debtList.reload();
     recurring.reload();
+    goals.reload();
   };
+
+  const savingsUsed = goals.items.flatMap((goal) =>
+    goal.history
+      .filter((entry) => entry.kind === "Used" && localMonthString(new Date(entry.createdAt)) === currentMonth)
+      .map((entry) => ({ ...entry, goalName: goal.name })),
+  );
 
   const totalSpent = useMemo(() => sumAmounts(monthExpenses), [monthExpenses]);
   const totalBalance = useMemo(() => accounts.reduce((sum, account) => sum + account.balance, 0), [accounts]);
@@ -248,6 +257,18 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
           </section>
         )}
 
+        {savingsUsed.length > 0 && (
+          <section className="mt-5 space-y-2 rounded-[28px] border border-rose-400/20 bg-rose-500/10 p-4">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-rose-200">Savings used this month</p>
+            {savingsUsed.map((entry) => (
+              <Link key={entry.id} href="/goals" className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-white">{entry.goalName} · from {entry.accountName}</span>
+                <span className="shrink-0 font-semibold text-rose-300">{formatSigned(entry.amount)}</span>
+              </Link>
+            ))}
+          </section>
+        )}
+
         {new Date().getDate() <= REVIEW_DAYS && hasAnyData && (
           <Link
             href={`/reports?month=${shiftMonth(currentMonth, -1)}`}
@@ -313,7 +334,7 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
             { href: "/budgets", icon: "◔", label: "Budget" },
             { href: "/categories", icon: "▣", label: "Categories" },
             { href: "/debts", icon: "◈", label: "Debt" },
-            { href: "/accounts", icon: "⇄", label: "Transfer" },
+            { href: "/goals", icon: "◎", label: "Goals" },
           ].map((item) => (
             <Link key={item.label} href={item.href} className="flex h-16 flex-col items-center justify-center rounded-[20px] border border-white/8 bg-[#1d2936] text-sm font-medium text-slate-100">
               <span className="text-xl leading-none">{item.icon}</span>
