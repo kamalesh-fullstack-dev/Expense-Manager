@@ -3,6 +3,7 @@
 // Neon test branch, never the production database.
 import "dotenv/config";
 import { execFileSync, spawn } from "node:child_process";
+import fs from "node:fs";
 import { chromium } from "playwright";
 
 const { E2E_DATABASE_URL, E2E_DIRECT_URL } = process.env;
@@ -226,6 +227,20 @@ async function run(browser) {
   check(true, "one user's currency doesn't affect another user");
   await other.context.close();
 
+  // Quick entry
+  await add(40, { title: "Chai", paymentMethod: "UPI" });
+  await add(40, { title: "Chai", paymentMethod: "UPI" });
+  await page.goto(`${base}/`);
+  await page.waitForSelector("text=This month");
+  await page.getByRole("button", { name: "Add expense" }).first().click();
+  await page.getByRole("button", { name: /Chai/ }).first().click();
+  const filled = await page.evaluate(() => [...document.querySelectorAll("[role=dialog] input")].slice(0, 2).map((input) => input.value));
+  check(filled[0] === "Chai" && filled[1] === "40", "a repeat chip fills the expense form", filled);
+  await page.getByRole("button", { name: "Save expense" }).click();
+  await page.waitForSelector("[role=dialog]", { state: "detached" });
+  const chai = (await call("GET", "/api/expenses?search=Chai")).data;
+  check(chai.length === 3 && chai.every((item) => item.paymentMethod === "UPI"), "a repeated expense keeps its details", chai.length);
+
   // Reports and screens
   await add(123456789.5, { title: "A very long expense title that should never push the amount off the screen" });
   await page.goto(`${base}/`);
@@ -239,7 +254,9 @@ async function run(browser) {
   await page.getByRole("button", { name: "Add expense" }).click();
   await page.getByRole("button", { name: /cancel|close/i }).first().click();
   check(page.url() === `${base}/transactions`, "expenses can be added from the expense log");
-  await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS ?? "."}/expenses.png` }).catch(() => {});
+  if (process.env.E2E_SCREENSHOTS) {
+    await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/expenses.png` });
+  }
   await page.goto(`${base}/`);
   await page.waitForSelector("text=This month");
   if (process.env.E2E_SCREENSHOTS) {
@@ -304,7 +321,9 @@ async function run(browser) {
   await prisma(["migrate", "deploy"]);
   // Rate limits live in the database now, so clear what the last run left behind.
   await prisma(["db", "execute", "--stdin"], 'DELETE FROM "RateLimit";');
-  const server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT)], { env, stdio: "ignore" });
+  // Set E2E_SERVER_LOG to a file path to keep the server's output when a run fails.
+  const serverOutput = process.env.E2E_SERVER_LOG ? fs.openSync(process.env.E2E_SERVER_LOG, "w") : "ignore";
+  const server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT)], { env, stdio: ["ignore", serverOutput, serverOutput] });
 
   try {
     for (let attempt = 0; attempt < 40; attempt += 1) {

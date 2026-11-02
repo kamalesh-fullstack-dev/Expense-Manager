@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { sendJson } from "@/lib/api-client";
+import { sendJson, useApiData } from "@/lib/api-client";
 import { localDateString } from "@/lib/dates";
 import { formatCurrency } from "@/lib/format";
 
@@ -20,6 +20,29 @@ export type Expense = {
 };
 
 const quickAmounts = [100, 250, 500, 1000, 2000];
+const REPEAT_LIMIT = 6;
+const noRecent: { items: Expense[] } = { items: [] };
+
+// The expenses logged most often lately, most frequent first. Loan payments are left out:
+// they belong to Pay EMI, which also lowers the loan.
+function frequentExpenses(recent: Expense[]) {
+  const groups = new Map<string, { expense: Expense; count: number; order: number }>();
+
+  recent
+    .filter((item) => !item.debtId)
+    .forEach((item, order) => {
+      const key = `${item.title.trim().toLowerCase()}|${item.amount}`;
+      const group = groups.get(key);
+
+      if (group) group.count += 1;
+      else groups.set(key, { expense: item, count: 1, order });
+    });
+
+  return [...groups.values()]
+    .sort((a, b) => b.count - a.count || a.order - b.order)
+    .slice(0, REPEAT_LIMIT)
+    .map((group) => group.expense);
+}
 const fieldClass = "w-full rounded-2xl border border-white/10 bg-[#0d1820] px-3 py-3 text-white outline-none placeholder:text-slate-500";
 const labelClass = "mb-1 block text-xs uppercase tracking-[0.2em] text-slate-400";
 
@@ -36,19 +59,46 @@ export function ExpenseFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const recent = useApiData("/api/transactions?page=0", noRecent).data.items;
+  const last = expense ? null : recent.find((item) => !item.debtId) ?? null;
+  const repeats = useMemo(() => (expense ? [] : frequentExpenses(recent)), [expense, recent]);
+  const pastTitles = useMemo(() => [...new Set(recent.map((item) => item.title))], [recent]);
+
   const [title, setTitle] = useState(expense?.title ?? "");
   const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
-  const [category, setCategory] = useState(expense?.category ?? "Food");
+  // For a new expense, undefined means "use what was used last", so the defaults can arrive after the form opens.
+  const [categoryChoice, setCategoryChoice] = useState<string | undefined>(expense?.category);
   const [merchant, setMerchant] = useState(expense?.merchant ?? "");
   const [notes, setNotes] = useState(expense?.notes ?? "");
-  const [paymentMethod, setPaymentMethod] = useState(expense?.paymentMethod ?? "Card");
+  const [paymentChoice, setPaymentChoice] = useState<string | undefined>(expense ? expense.paymentMethod ?? "Card" : undefined);
   const [date, setDate] = useState(expense?.date.slice(0, 10) ?? localDateString());
   // undefined means "use the default account", null means no account.
   const [accountChoice, setAccountChoice] = useState<string | null | undefined>(expense ? expense.accountId ?? null : undefined);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const accountId = accountChoice === undefined ? accounts[0]?.id ?? null : accountChoice;
+  const category = categoryChoice ?? last?.category ?? "Food";
+  const paymentMethod = paymentChoice ?? last?.paymentMethod ?? "Card";
+  const knownAccount = (id?: string | null) => (id && accounts.some((account) => account.id === id) ? id : null);
+  const accountId = accountChoice === undefined ? knownAccount(last?.accountId) ?? accounts[0]?.id ?? null : accountChoice;
+
+  const fillFrom = (item: Expense) => {
+    setTitle(item.title);
+    setAmount(String(item.amount));
+    setCategoryChoice(item.category);
+    setMerchant(item.merchant ?? "");
+    setPaymentChoice(item.paymentMethod ?? "Card");
+    setAccountChoice(knownAccount(item.accountId) ?? undefined);
+    setError("");
+  };
+
+  const handleTitle = (value: string) => {
+    setTitle(value);
+
+    // Picking a past title fills in the rest, unless an amount is already typed.
+    const match = expense ? null : recent.find((item) => !item.debtId && item.title.toLowerCase() === value.trim().toLowerCase());
+    if (match && !amount) fillFrom(match);
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,9 +150,37 @@ export function ExpenseFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {repeats.length > 0 && (
+            <div>
+              <p className={labelClass}>Repeat</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {repeats.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => fillFrom(item)}
+                    className="shrink-0 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-left"
+                  >
+                    <span className="block whitespace-nowrap text-sm font-medium text-white">
+                      {formatCurrency(item.amount)} {item.title}
+                    </span>
+                    <span className="block whitespace-nowrap text-[11px] text-slate-400">
+                      {item.category} • {item.paymentMethod || "Card"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className={labelClass}>Title</label>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Groceries" className={fieldClass} />
+            <input value={title} onChange={(event) => handleTitle(event.target.value)} list="past-titles" placeholder="Groceries" className={fieldClass} />
+            <datalist id="past-titles">
+              {pastTitles.map((item) => (
+                <option key={item} value={item} />
+              ))}
+            </datalist>
           </div>
 
           <div>
@@ -125,7 +203,7 @@ export function ExpenseFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Category</label>
-              <select value={category} onChange={(event) => setCategory(event.target.value)} className={fieldClass}>
+              <select value={category} onChange={(event) => setCategoryChoice(event.target.value)} className={fieldClass}>
                 {[...new Set([category, ...categories])].map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
@@ -145,7 +223,7 @@ export function ExpenseFormModal({
 
           <div>
             <label className={labelClass}>Payment method</label>
-            <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className={fieldClass}>
+            <select value={paymentMethod} onChange={(event) => setPaymentChoice(event.target.value)} className={fieldClass}>
               <option value="Card">Card</option>
               <option value="UPI">UPI</option>
               <option value="Cash">Cash</option>
