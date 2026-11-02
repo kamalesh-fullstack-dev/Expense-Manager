@@ -4,18 +4,21 @@
 Build a mobile-first expense tracker PWA inspired by the workout tracker, but with a different finance-focused UI and experience. The product should feel clean, modern, premium, and designed for daily spending tracking and budget awareness.
 
 ## Current implementation status
-This project is now in a working MVP stage with the core financial flows implemented and validated.
+The app is live at https://expense-manager-three-gamma.vercel.app, deployed from `main` on Vercel with Neon Postgres.
 
 ### Implemented features
 - Auth flow with protected routes and login/signup
-- Mobile-first dashboard with premium dark finance UI
-- Expense add/edit/delete flow
+- Mobile-first Home for daily use, with a premium dark finance UI and Poppins font
+- Expense add/edit/delete, with repeat chips and remembered defaults for quick entry
+- Expense log (`/transactions`) with search, filters, sort and paging
 - Category creation and custom category support
 - Monthly budget creation, update, and delete flow
 - Account balance tracking and transfer flow
-- Debt tracking and EMI summary
-- Monthly reports with trend and category summaries
-- Account balance mix and reports sections
+- Debt tracking, entered as an amount per month with start and end dates
+- Monthly reports with trend and category summaries, and a month in review
+- Savings goals that set money aside in one or more accounts without moving it
+- One display currency per user (₹, $, €, £ and others; no conversion)
+- Page loaders and loading placeholders
 - PWA-ready app shell and installable mobile layout
 
 ### Current tech stack (what the code runs on today)
@@ -25,7 +28,7 @@ This project is now in a working MVP stage with the core financial flows impleme
 - Hand-built charts, and a hand-written service worker in `public/sw.js`
 - Node's test runner for unit tests, Playwright script for browser tests (`tests/e2e.mjs`)
 
-The app is not deployed yet. See "Production stack" for where it is going.
+See "Production stack" for how it is deployed.
 
 ## Core objective
 Create a personal expense tracker that helps a user:
@@ -63,22 +66,25 @@ Use a finance-oriented palette such as:
 - protected routes ✅
 - user-specific data ✅
 
-### Dashboard
-- total spending this month ✅
-- monthly income summary ✅ (placeholder/income area ready for expansion)
-- available budget ✅
-- recent expenses ✅
-- category breakdown card ✅
-- spending trend chart ✅
-- quick action buttons ✅
+### Home
+Home is for daily use; analysis lives on Reports and budget setup on Budgets.
+- total spending this month, budget, left, balance and EMI still due ✅
+- budget alerts and savings used this month ✅
+- coming up in the next 7 days (bills to log or skip, EMIs due) ✅
+- last month's review link for the first week of each month ✅
+- quick actions: Income, Recurring, Budget, Categories, Debt, Goals ✅
+- latest 5 expenses with a link to the expense log ✅
+
+### Navigation
+- bottom nav: Home, Expenses, + (add expense), Reports, Accounts ✅
+- edit and delete are shared icon buttons (`src/components/IconButtons.tsx`) ✅
 
 ### Expenses
-- add expense form ✅
-- edit expense ✅
-- delete expense ✅
-- search by name or category ✅
-- filter by date range ✅ (month-based filters)
-- sort transactions ✅ (through date ordering and filters)
+- add, edit and delete expense ✅
+- repeat chips for the most frequent recent expenses, and past-title suggestions ✅
+- new expenses default to the category, payment method and account used last ✅
+- expense log with search, category, account, date range, sort and paging ✅
+- warning before an expense spends money set aside for a goal ✅
 
 ### Categories
 - Food ✅
@@ -107,17 +113,28 @@ Use a finance-oriented palette such as:
 - highest-cost merchants ✅
 - account balance mix ✅
 - transfer summary ✅
+- month in review: spending against last month, biggest category changes, budgets over, savings rate, biggest expense ✅
+- `/reports?month=YYYY-MM` opens a chosen month ✅
 
 ### Accounts
 - account creation ✅
 - balance tracking ✅
 - transfer between accounts ✅
-- account snapshot on dashboard ✅
+- money set aside for goals and money free, under each balance ✅
+- display currency picker ✅
 
 ### Debt tracking
-- debt creation and tracking ✅
-- monthly EMI summary ✅
-- debt pressure indicator ✅
+- loans entered as amount per month, due day, start and end date ✅
+- balance worked out from the due dates still to come; the end date's month always counts ✅
+- Pay EMI by hand, with parallel payments that can't overpay ✅
+- monthly EMI summary and debt pressure indicator ✅
+
+### Savings goals
+- goals with a target and optional date, showing the amount needed a month ✅
+- set money aside from one or more accounts; balances never change ✅
+- only free money can be set aside; withdraw releases it ✅
+- spending below the set-aside amount lowers the newest goal first, logged as "Spent from" ✅
+- goals are only topped up by hand ✅
 
 ## Data model
 ### User
@@ -155,6 +172,9 @@ Use a finance-oriented palette such as:
 ### Added models
 - Income
 - RecurringExpense
+- SavingsGoal and GoalEntry (money set aside per goal and account)
+- RateLimit (login and sign-up limits, shared across serverless instances)
+- `User.currency` (display currency)
 
 ## User flows
 1. User logs in
@@ -227,20 +247,21 @@ The MVP is successful when:
 - design feels distinct from workout tracker and more finance-oriented ✅
 
 ## Known remaining work
-- password reset (needs an email provider)
-- real push notifications for reminders (reminders are in-app only)
-- deploy on Vercel (see "Production stack")
+- push notifications for EMI and bill reminders a day before they are due (next; needs VAPID keys and a Vercel cron job)
+- change password, and password reset (reset needs an email provider)
+- security review and `npm audit` (16 moderate warnings, not yet reviewed)
+- confirm `clientIp()` reads the right value behind Vercel
 - test installing on real Android and iPhone devices
-- split expenses, motion polish
+- split expenses, receipt photos, CSV import, motion polish
 - postpone SMS import to a future phase
 
 ## Production stack (same as the Workout Tracker)
-Money Manager should deploy the same way as `~/Desktop/Workout Tracker` (GitHub: `kamalesh-fullstack-dev/Workout-Tracker`). Read that project for working examples. The database, Prisma, migrations, auth and code changes below are done. The Vercel deploy is what remains.
+Money Manager should deploy the same way as `~/Desktop/Workout Tracker` (GitHub: `kamalesh-fullstack-dev/Workout-Tracker`). Read that project for working examples. All of the move below is done, and the app is live on Vercel.
 
 ### Target
 | Area | Workout Tracker setup | Money Manager today |
 | --- | --- | --- |
-| Hosting | Vercel, deployed from GitHub | Not deployed |
+| Hosting | Vercel, deployed from GitHub | Same; every push to `main` deploys |
 | Database | Neon Postgres | Neon Postgres |
 | Prisma driver | `@prisma/adapter-neon` with `@neondatabase/serverless` and `ws` | Same |
 | Prisma config | `prisma.config.ts`, migrations use `DIRECT_URL` | Same |
@@ -254,7 +275,7 @@ Money Manager should deploy the same way as `~/Desktop/Workout Tracker` (GitHub:
 | Unit tests | Vitest (`tests/unit`) | Node test runner (`src/lib/*.test.ts`) |
 | Browser tests | `@playwright/test` (`tests/e2e`) | `tests/e2e.mjs` on a Neon `e2e` branch |
 
-Only hosting is left to go live. Move the rest over only when there is a reason to.
+Move the rest over only when there is a reason to.
 
 ### Environment variables
 Never commit real values. `.env.example` lists these names. Set them in Vercel too:
@@ -262,14 +283,15 @@ Never commit real values. `.env.example` lists these names. Set them in Vercel t
 - `DIRECT_URL`: Neon direct connection, used only for Prisma migrations.
 - `AUTH_SECRET`: generate with `openssl rand -base64 33`. Use a different value in Vercel from local `.env`. There is no fallback, so login fails without it.
 
-### Deploy steps
-1. Import the GitHub repo into Vercel, and pick the function region closest to the Neon database (`us-east-2`).
-2. Add the environment variables.
-3. Deploy from `main`. The build applies migrations to the production database.
-4. Confirm `clientIp()` in `src/lib/api.ts` reads the right value behind Vercel.
+### Deploying
+Push to `main` and Vercel deploys it. The build runs `prisma migrate deploy` first, so a push with a new migration changes the production database before the new code goes live. Functions run in `iad1`, close to the Neon database in `us-east-2`.
 
 ## Working in this repo
 - Run `npm test`, `npx eslint .` and `npm run test:e2e` before finishing a change.
+- `npm run build` migrates the production database. To check a build without that, run `npx next build`.
+- `npm run test:e2e` needs `E2E_DATABASE_URL` and `E2E_DIRECT_URL` pointing at the Neon `e2e` branch, and refuses to run against production. Set `E2E_SERVER_LOG` to a file path to keep the server's output when a run fails.
+- From India, connecting to Neon can take longer than Node's 250ms per-address limit, which fails the connection. The e2e script raises it with `NODE_OPTIONS`; the same cause explains occasional failed requests in `npm run dev`.
+- Keep the project outside OneDrive: its permission rules stop `next build` clearing old files.
 - Money is stored as paise in BigInt `*Paise` columns. The API speaks rupees; convert with `src/lib/money.ts`.
 - Each user has one display currency (`User.currency`). It changes the symbol only and never converts amounts. Show money with `formatCurrency`, and only add currencies with two decimals.
 - Recurring items never post by themselves. The user logs or skips each occurrence.
