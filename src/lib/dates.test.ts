@@ -11,17 +11,22 @@ test("local dates use the device's calendar day, not UTC", () => {
   assert.equal(localMonthString(justAfterMidnight), "2026-11");
 });
 
-test("loan payments count only the due dates between two days", () => {
+test("loan payments count the due dates still to come", () => {
   assert.equal(countDueDates("2026-11-02", "2027-04-30", 5), 6);
   assert.equal(countDueDates("2026-11-10", "2027-04-30", 5), 5);
-  assert.equal(countDueDates("2026-11-02", "2027-04-04", 5), 5);
   assert.equal(countDueDates("2026-11-05", "2026-11-05", 5), 1);
+  assert.equal(countDueDates("2026-11-10", "2026-11-20", 5), 0);
   assert.equal(countDueDates("2027-01-01", "2026-11-05", 5), 0);
+});
+
+test("a loan's final month counts even when its due day is after the end date", () => {
+  assert.equal(countDueDates("2026-11-02", "2027-06-19", 30), 8);
+  assert.equal(countDueDates("2026-07-19", "2027-06-19", 30), 12);
 });
 
 test("loan due dates on the 31st fall on the last day of shorter months", () => {
   assert.equal(countDueDates("2027-02-01", "2027-02-28", 31), 1);
-  assert.equal(countDueDates("2027-02-01", "2027-02-27", 31), 0);
+  assert.equal(countDueDates("2026-12-31", "2027-02-28", 31), 3);
 });
 
 test("shiftMonth crosses year boundaries", () => {

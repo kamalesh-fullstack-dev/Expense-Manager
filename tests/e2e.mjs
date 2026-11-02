@@ -289,22 +289,21 @@ async function run(browser) {
 
 (async () => {
   // A sleeping Neon branch can refuse the first connections while it wakes up.
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      execFileSync(process.execPath, [PRISMA, "migrate", "deploy"], { env, stdio: "ignore" });
-      break;
-    } catch (error) {
-      if (attempt === 5) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+  const prisma = async (args, input) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        execFileSync(process.execPath, [PRISMA, ...args], { env, input, stdio: ["pipe", "ignore", "ignore"] });
+        return;
+      } catch (error) {
+        if (attempt === 5) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
     }
-  }
+  };
 
+  await prisma(["migrate", "deploy"]);
   // Rate limits live in the database now, so clear what the last run left behind.
-  execFileSync(process.execPath, [PRISMA, "db", "execute", "--stdin"], {
-    env,
-    input: 'DELETE FROM "RateLimit";',
-    stdio: ["pipe", "ignore", "ignore"],
-  });
+  await prisma(["db", "execute", "--stdin"], 'DELETE FROM "RateLimit";');
   const server = spawn(process.execPath, [NEXT, "start", "-p", String(PORT)], { env, stdio: "ignore" });
 
   try {

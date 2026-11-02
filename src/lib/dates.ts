@@ -53,7 +53,8 @@ export function daysUntilDueDay(dueDay: number, today = new Date()) {
   return Math.round((next.getTime() - start.getTime()) / 86_400_000);
 }
 
-// Monthly due dates from one day to another, both included, with day 31 meaning the last day of shorter months.
+// Monthly due dates still to come from a day through the final month, with day 31 meaning the last day of
+// shorter months. The final month always counts: a loan ending on the 19th with a due day of the 30th still pays then.
 export function countDueDates(from: string, to: string, dueDay: number) {
   let count = 0;
 
@@ -62,7 +63,7 @@ export function countDueDates(from: string, to: string, dueDay: number) {
     const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
     const due = `${month}-${String(Math.min(dueDay, lastDay)).padStart(2, "0")}`;
 
-    if (due >= from && due <= to) count += 1;
+    if (due >= from) count += 1;
   }
 
   return count;
