@@ -10,7 +10,7 @@ import { ListSkeleton, PageLoader, Skeleton } from "@/components/Loader";
 import { ExpenseFormModal, type Expense } from "@/components/ExpenseFormModal";
 import type { Recurring } from "@/components/RecurringPage";
 import { sendJson, useApiData, useApiList } from "@/lib/api-client";
-import { daysUntilDueDay, daysUntilStoredDate, formatStoredDate, localMonthString } from "@/lib/dates";
+import { daysUntilDueDay, daysUntilStoredDate, formatStoredDate, localMonthString, shiftMonth } from "@/lib/dates";
 import { categoryMeta, defaultCategories, formatCurrency, formatSigned } from "@/lib/format";
 
 type Account = {
@@ -38,6 +38,8 @@ type Budget = {
 };
 
 const RECENT_LIMIT = 5;
+// Last month's review is offered on Home for the first week of the new month.
+const REVIEW_DAYS = 7;
 const noRecent: { items: Expense[] } = { items: [] };
 
 const sumAmounts = (items: Array<{ amount: number }>) => items.reduce((sum, item) => sum + item.amount, 0);
@@ -244,6 +246,21 @@ export function ExpenseDashboard({ autoOpenAdd = false }: { autoOpenAdd?: boolea
               </Link>
             ))}
           </section>
+        )}
+
+        {new Date().getDate() <= REVIEW_DAYS && hasAnyData && (
+          <Link
+            href={`/reports?month=${shiftMonth(currentMonth, -1)}`}
+            className="mt-5 flex items-center justify-between rounded-[28px] border border-violet-400/20 bg-violet-500/10 p-4"
+          >
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-violet-200">Month in review</p>
+              <p className="mt-1 text-sm font-medium text-white">
+                Your {formatStoredDate(`${shiftMonth(currentMonth, -1)}-01`, { month: "long" })} review is ready
+              </p>
+            </div>
+            <span className="text-lg text-violet-200">→</span>
+          </Link>
         )}
 
         {(dueSoon.length > 0 || debtsDueSoon.length > 0) && (

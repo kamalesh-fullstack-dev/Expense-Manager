@@ -26,6 +26,9 @@ const env = {
   ...process.env,
   DATABASE_URL: E2E_DATABASE_URL,
   DIRECT_URL: E2E_DIRECT_URL,
+  // Connecting to Neon from far away can take longer than Node's 250ms per-address limit,
+  // which fails the connection outright, so give each attempt more time.
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, "--dns-result-order=ipv4first", "--network-family-autoselection-attempt-timeout=1000"].filter(Boolean).join(" "),
   AUTH_SECRET: "e2e-only-secret",
 };
 
@@ -262,6 +265,12 @@ async function run(browser) {
   if (process.env.E2E_SCREENSHOTS) {
     await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/dashboard.png`, fullPage: true });
   }
+  await page.goto(`${base}/reports`);
+  await page.waitForSelector("text=Month in review");
+  await page.waitForSelector("text=You spent");
+  check(await page.getByText("Over budget on").count() === 0 && (await page.getByText("Every budget stayed on track.").count()) === 1, "the monthly review lists budget results");
+  await page.goto(`${base}/reports?month=${previous}`);
+  check((await page.locator("input[type=month]").inputValue()) === previous, "a review link opens the chosen month");
   await page.goto(`${base}/reports`);
   await page.waitForSelector("text=of income");
   await page.waitForSelector("text=Bulk Mart");

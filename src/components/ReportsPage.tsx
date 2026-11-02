@@ -35,9 +35,13 @@ type Transfer = {
   toAccountName: string;
 };
 
-export function ReportsPage() {
+type Budget = { id: string; category: string; amount: number };
+
+const sumAmounts = (items: Array<{ amount: number }>) => items.reduce((sum, item) => sum + item.amount, 0);
+
+export function ReportsPage({ initialMonth }: { initialMonth?: string }) {
   const { status } = useSession();
-  const [selectedMonth, setSelectedMonth] = useState(() => localMonthString());
+  const [selectedMonth, setSelectedMonth] = useState(() => initialMonth ?? localMonthString());
   const trendMonths = useMemo(() => monthsEndingAt(selectedMonth, 6), [selectedMonth]);
 
   const expenseList = useApiList<Expense>(`/api/expenses?from=${trendMonths[0].monthKey}&to=${selectedMonth}`);
@@ -45,6 +49,7 @@ export function ReportsPage() {
   const { items: allTransfers } = useApiList<Transfer>("/api/transfers");
   const { items: incomes } = useApiList<{ amount: number }>(`/api/incomes?from=${selectedMonth}&to=${selectedMonth}`);
   const { items: customCategories } = useApiList<{ name: string; color: string }>("/api/categories");
+  const { items: budgets } = useApiList<Budget>(`/api/budgets?month=${selectedMonth}`);
   const loading = expenseList.loading;
 
   const expenses = useMemo(
@@ -125,6 +130,38 @@ export function ReportsPage() {
   const monthChange = previousSpent > 0 ? Math.round(((totalSpent - previousSpent) / previousSpent) * 100) : null;
 
   const averagePerDay = totalSpent / elapsedDaysInMonth(selectedMonth);
+
+  const isCurrentMonth = selectedMonth === localMonthString();
+  const monthName = formatStoredDate(`${selectedMonth}-01`, { month: "long" });
+  const previousName = formatStoredDate(`${trendMonths[trendMonths.length - 2].monthKey}-01`, { month: "long" });
+
+  // The categories whose spending moved most since the month before.
+  const categoryChanges = useMemo(() => {
+    const previousKey = trendMonths[trendMonths.length - 2].monthKey;
+    const totalsFor = (monthKey: string) => {
+      const totals = new Map<string, number>();
+      expenseList.items
+        .filter((item) => item.date.slice(0, 7) === monthKey)
+        .forEach((item) => totals.set(item.category, (totals.get(item.category) ?? 0) + item.amount));
+      return totals;
+    };
+    const current = totalsFor(selectedMonth);
+    const previous = totalsFor(previousKey);
+
+    return [...new Set([...current.keys(), ...previous.keys()])]
+      .map((name) => ({ name, change: Math.round(((current.get(name) ?? 0) - (previous.get(name) ?? 0)) * 100) / 100 }))
+      .filter((item) => item.change !== 0)
+      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+      .slice(0, 2);
+  }, [expenseList.items, selectedMonth, trendMonths]);
+
+  const overBudget = useMemo(
+    () =>
+      budgets
+        .map((budget) => ({ ...budget, spent: sumAmounts(expenses.filter((item) => item.category === budget.category)) }))
+        .filter((budget) => budget.spent > budget.amount),
+    [budgets, expenses],
+  );
   const maxTrendValue = Math.max(...monthTrend.map((item) => item.total), 1);
 
   if (status === "loading") {
@@ -155,6 +192,60 @@ export function ReportsPage() {
             </button>
           </div>
         </header>
+
+        <section className="mb-6 rounded-[28px] border border-violet-400/20 bg-violet-500/10 p-4">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-violet-200">Month in review</p>
+          <h2 className="mt-1 text-lg font-semibold">
+            {monthName}
+            {isCurrentMonth ? " so far" : ""}
+          </h2>
+
+          {loading && expenses.length === 0 ? (
+            <ListSkeleton rows={2} />
+          ) : expenses.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-300">Nothing was logged this month.</p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm text-slate-200">
+              <li>
+                You spent <span className="font-semibold text-white">{formatCurrency(totalSpent)}</span>
+                {monthChange === null
+                  ? "."
+                  : monthChange === 0
+                    ? `, the same as ${previousName}.`
+                    : `, ${Math.abs(monthChange)}% ${monthChange > 0 ? "more" : "less"} than ${previousName}.`}
+              </li>
+              {categoryChanges.map((item) => (
+                <li key={item.name}>
+                  {item.name}: <span className={item.change > 0 ? "text-rose-300" : "text-emerald-300"}>{formatCurrency(Math.abs(item.change))} {item.change > 0 ? "more" : "less"}</span> than {previousName}.
+                </li>
+              ))}
+              {budgets.length > 0 &&
+                (overBudget.length === 0 ? (
+                  <li className="text-emerald-300">Every budget stayed on track.</li>
+                ) : (
+                  overBudget.map((budget) => (
+                    <li key={budget.id}>
+                      Over budget on {budget.category}: <span className="text-rose-300">{formatCurrency(budget.spent)}</span> of {formatCurrency(budget.amount)}.
+                    </li>
+                  ))
+                ))}
+              {savingsRate !== null && (
+                <li>
+                  {saved >= 0 ? (
+                    <>You saved <span className="text-emerald-300">{savingsRate}%</span> of your income.</>
+                  ) : (
+                    <>You spent <span className="text-rose-300">{formatCurrency(-saved)}</span> more than you earned.</>
+                  )}
+                </li>
+              )}
+              {topMerchants[0] && (
+                <li>
+                  Biggest expense: {topMerchants[0].title}, {formatCurrency(topMerchants[0].amount)}.
+                </li>
+              )}
+            </ul>
+          )}
+        </section>
 
         <section className="rounded-[28px] border border-white/10 bg-[#121d27] p-4 shadow-[0_12px_24px_rgba(2,6,23,0.18)]">
           <div className="mb-4 flex items-center justify-between">
